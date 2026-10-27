@@ -11,17 +11,21 @@ export function ShelfCaptureScreen() {
   const navigate = useNavigate()
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [preparing, setPreparing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => () => void (photo && URL.revokeObjectURL(photo.url)), [photo])
 
   async function onPhoto(source: Blob) {
     setError(null)
+    setPreparing(true)
     try {
       const blob = await resizeToJpeg(source, SHELF_SIDE, 0.85)
       setPhoto({ blob, url: URL.createObjectURL(blob) })
-    } catch {
-      setError('Could not read that photo. Try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not read that photo. Try another image.')
+    } finally {
+      setPreparing(false)
     }
   }
 
@@ -57,14 +61,17 @@ export function ShelfCaptureScreen() {
         <>
           <img src={photo.url} alt="Captured shelf" className="w-full rounded-box bg-black object-contain" />
           <div className="grid grid-cols-2 gap-3">
-            <button className="btn btn-outline" disabled={busy} onClick={() => setPhoto(null)}>Retake</button>
+            <button className="btn btn-outline" disabled={busy} onClick={() => setPhoto(null)}>Change photo</button>
             <button className="btn btn-primary" disabled={busy} onClick={send}>
               {busy ? <span className="loading loading-spinner loading-sm" /> : 'Scan shelf'}
             </button>
           </div>
         </>
       ) : (
-        <CameraView onPhoto={onPhoto} hint="Whole shelf, labels facing out" guide={false} />
+        <>
+          <CameraView onPhoto={onPhoto} hint="Whole shelf, labels facing out" guide={false} disabled={preparing} />
+          {preparing && <p role="status" className="text-center text-sm">Preparing photo…</p>}
+        </>
       )}
     </main>
   )

@@ -1,36 +1,49 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconCamera, IconPhoto } from '@tabler/icons-react'
 
 type Props = {
   onPhoto: (photo: Blob) => void
   hint?: string
   guide?: boolean // dashed box showing where one item should sit
+  disabled?: boolean
 }
 
-// Live rear-camera view with a framing guide, plus a photo-library picker. Falls back to the
-// phone's own camera when live access is denied or unavailable (also handy on a desktop).
-export function CameraView({ onPhoto, hint = 'One item, label facing the camera', guide = true }: Props) {
+// Saved photos work without camera access. Start a live camera only after the user asks for it.
+export function CameraView({ onPhoto, hint = 'One item, label facing the camera', guide = true, disabled = false }: Props) {
   const video = useRef<HTMLVideoElement>(null)
+  const [cameraActive, setCameraActive] = useState(false)
   const [ready, setReady] = useState(false)
   const [denied, setDenied] = useState(false)
 
   useEffect(() => {
+    if (!cameraActive) return
     let stream: MediaStream | undefined
     let cancelled = false
+    setReady(false)
+    setDenied(false)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setDenied(true)
+      return
+    }
     navigator.mediaDevices
-      ?.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }, audio: false })
+      .getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }, audio: false })
       .then((s) => {
         if (cancelled) return s.getTracks().forEach((t) => t.stop())
         stream = s
         if (video.current) video.current.srcObject = s
       })
-      .catch(() => setDenied(true))
-    if (!navigator.mediaDevices) setDenied(true)
+      .catch(() => { if (!cancelled) setDenied(true) })
     return () => {
       cancelled = true
       stream?.getTracks().forEach((t) => t.stop())
     }
-  }, [])
+  }, [cameraActive])
+
+  function stopCamera() {
+    setCameraActive(false)
+    setReady(false)
+    setDenied(false)
+  }
 
   function snap() {
     const v = video.current
@@ -42,50 +55,70 @@ export function CameraView({ onPhoto, hint = 'One item, label facing the camera'
     canvas.toBlob((b) => b && onPhoto(b), 'image/jpeg', 0.92)
   }
 
+  const picker = (
+    <label className="btn btn-primary btn-block" onClick={stopCamera}>
+      <IconPhoto size={20} /> Choose from library
+      <input
+        type="file"
+        accept="image/*,.heic,.heif"
+        aria-label="Choose from library"
+        disabled={disabled}
+        className="sr-only"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          e.target.value = ''
+          if (f) {
+            stopCamera()
+            onPhoto(f)
+          }
+        }}
+      />
+    </label>
+  )
+
   return (
     <div className="flex flex-col gap-3">
-      {!denied && (
+      {picker}
+      {!cameraActive && (
+        <button className="btn btn-outline btn-block" disabled={disabled} onClick={() => setCameraActive(true)}>
+          <IconCamera size={20} /> Take a photo
+        </button>
+      )}
+      {cameraActive && !denied && (
         <div className="relative aspect-[3/4] overflow-hidden rounded-box bg-black">
           <video ref={video} autoPlay playsInline muted onPlaying={() => setReady(true)} className="size-full object-cover" />
           {guide && <div className="pointer-events-none absolute inset-[12%] rounded-box border-2 border-dashed border-white/80" />}
           <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-sm text-white/90">{hint}</p>
         </div>
       )}
-      {denied && <p className="text-sm opacity-70">Camera access is off. Take a photo or choose one from your library.</p>}
-      {!denied && (
-        <button className="btn btn-primary btn-lg btn-block" disabled={!ready} onClick={snap}>
+      {cameraActive && denied && <p className="text-sm opacity-70">Live camera access is unavailable. Use your device camera below or choose a saved photo.</p>}
+      {cameraActive && denied && (
+        <label className="btn btn-outline btn-block">
+          <IconCamera size={20} /> Take a photo
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            aria-label="Take a photo"
+            disabled={disabled}
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) {
+                stopCamera()
+                onPhoto(file)
+              }
+            }}
+          />
+        </label>
+      )}
+      {cameraActive && !denied && (
+        <button className="btn btn-primary btn-lg btn-block" disabled={!ready || disabled} onClick={snap}>
           <IconCamera size={24} /> Capture
         </button>
       )}
-      {denied && (
-        <PhotoPicker onPhoto={onPhoto} capture>
-          <IconCamera size={20} /> Take a photo
-        </PhotoPicker>
-      )}
-      <PhotoPicker onPhoto={onPhoto}>
-        <IconPhoto size={20} /> {denied ? 'Choose from library' : 'Choose from library instead'}
-      </PhotoPicker>
+      {cameraActive && <button className="btn btn-ghost btn-block" disabled={disabled} onClick={stopCamera}>Cancel camera</button>}
     </div>
-  )
-}
-
-// File-input button. `capture` jumps straight to the camera on phones; without it the OS
-// offers the photo library.
-function PhotoPicker({ onPhoto, capture, children }: { onPhoto: (photo: Blob) => void; capture?: boolean; children: ReactNode }) {
-  return (
-    <label className="btn btn-outline btn-block">
-      {children}
-      <input
-        type="file"
-        accept="image/*"
-        capture={capture ? 'environment' : undefined}
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0]
-          if (f) onPhoto(f)
-          e.target.value = ''
-        }}
-      />
-    </label>
   )
 }

@@ -11,6 +11,7 @@ export function CaptureScreen() {
   const { enqueue, last, pending } = useCaptureQueue()
   const [review, setReview] = useState<Review | null>(null)
   const [busy, setBusy] = useState(false)
+  const [preparing, setPreparing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [added, setAdded] = useState(0)
 
@@ -18,11 +19,14 @@ export function CaptureScreen() {
 
   async function onPhoto(source: Blob) {
     setError(null)
+    setPreparing(true)
     try {
       const { photo, thumb } = await makeCapture(source)
       setReview({ photo, thumb, url: URL.createObjectURL(photo) })
-    } catch {
-      setError('Could not read that photo. Try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not read that photo. Try another image.')
+    } finally {
+      setPreparing(false)
     }
   }
 
@@ -34,10 +38,16 @@ export function CaptureScreen() {
   async function confirm() {
     if (!review) return
     setBusy(true)
-    await enqueue(review.photo, review.thumb, 'in_stock')
-    setAdded((n) => n + 1)
-    setReview(null)
-    setBusy(false)
+    setError(null)
+    try {
+      await enqueue(review.photo, review.thumb, 'in_stock')
+      setAdded((n) => n + 1)
+      setReview(null)
+    } catch {
+      setError('Could not save the photo on this device. Free some storage or allow site storage, then try Confirm again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -59,15 +69,16 @@ export function CaptureScreen() {
             The photo confirms the item is here. If we already have it, it is marked in stock; otherwise it is added as a new item.
           </p>
           <div className="grid grid-cols-2 gap-3">
-            <button className="btn btn-outline" disabled={busy} onClick={() => setReview(null)}>Retake</button>
+            <button className="btn btn-outline" disabled={busy} onClick={() => setReview(null)}>Change photo</button>
             <button className="btn btn-primary" disabled={busy} onClick={confirm}>Confirm</button>
           </div>
         </>
       ) : (
         <>
-          <CameraView onPhoto={onPhoto} />
+          <CameraView onPhoto={onPhoto} disabled={preparing} />
+          {preparing && <p role="status" className="text-center text-sm">Preparing photo…</p>}
           {last && (
-            <button className="btn btn-ghost btn-block" onClick={sameAsLast}>
+            <button className="btn btn-ghost btn-block" disabled={preparing} onClick={sameAsLast}>
               <IconRepeat size={18} /> Same item as last photo
             </button>
           )}

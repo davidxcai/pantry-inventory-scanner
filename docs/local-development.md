@@ -28,7 +28,11 @@ Add item (`/api/identify`) fails the same way.
 - Or run it from the terminal: `npm run shelf-scan <scan-id>`. It runs the same code as `/api/shelf` with the secret key. It only picks up scans in `queued`, `red` or `waiting_quota`, and it uses Gemini quota.
 
 ## Photos: camera vs library
-`CameraView` (`src/features/intake/CameraView.tsx`) is used by both Add item and Update stock. It shows a live camera with **Capture**, plus **Choose from library**. That button is a file input *without* `capture`, so iOS and Android open the photo picker. With `capture="environment"` they jump straight to the camera and the library cannot be reached. If live camera access is denied, a separate **Take a photo** button (with `capture`) is shown as well.
+`CameraView` (`src/features/intake/CameraView.tsx`) is used by both Add item and Update stock. It starts with **Choose from library** and **Take a photo**, with the camera off. Choosing from the library never requests camera access. **Take a photo** starts the live camera; cancelling it or switching to the library stops the stream. If live access is unavailable, a separate device-camera picker is offered.
+
+The library file input has no `capture` attribute, so iOS and Android can open saved photos. Only the device-camera fallback uses `capture="environment"`. Saved HEIC/HEIF photos are converted to JPEG on the device when native browser decoding is unavailable. The decoder is loaded only when needed. Photo and thumbnail creation reuse one decoded original, and preparation errors leave the picker available to try again.
+
+Run `npm run test:photos` for image preparation regression tests.
 
 ## Known gaps
 - A `queued` scan on the review screen spins forever with no way to retry from that screen.
