@@ -38,9 +38,11 @@ export function ItemDialog({ item, signedIn, onClose }: Props) {
           {stale && item.updated_at && ' · may be out of date'}
         </p>
 
-        {signedIn && item.pending && item.availability !== 'in_stock' && (
+        {signedIn && item.pending && (
           <p className="mt-2 text-xs opacity-70">
-            Another student reported this. Tap {availabilityLabel(item.availability)} below if you see the same.
+            {item.availability === 'in_stock'
+              ? 'Another student reported this. If you see it on the shelf, confirm it with Update stock.'
+              : `Another student reported this. Tap ${availabilityLabel(item.availability)} below if you see the same.`}
           </p>
         )}
         {setStatus.error && <div role="alert" className="alert alert-error alert-soft mt-3 text-sm">{setStatus.error.message}</div>}

@@ -91,6 +91,22 @@ async function main() {
     await set(b, fix, "out");
     check("B can correct own pending report immediately", !(await set(b, fix, "low")).error && (await stateOf(fix)).status === "low");
 
+    // ----- photos (apply_item_status, as resolve_job_existing/new call it) -----
+    const photo = (u: Student, itemId: string, status: string) =>
+      admin.rpc("apply_item_status", { p_item_id: itemId, p_status: status, p_user: u.id });
+    const shot = await makeItem("Status Test Photo");
+    await photo(a, shot, "in_stock");
+    await photo(a, shot, "in_stock");
+    s = await stateOf(shot);
+    check("own second photo stays pending and A's", !s.status_verified && s.status_updated_by === a.id, s);
+    await photo(b, shot, "in_stock");
+    s = await stateOf(shot);
+    check("B's photo confirms A's report", s.status_verified && s.status_updated_by === a.id, s);
+    await photo(b, shot, "low");
+    s = await stateOf(shot);
+    check("photo with a new status is a pending report", s.status === "low" && !s.status_verified && s.status_updated_by === b.id, s);
+    check("A (who added the item) can confirm B's update", !(await set(a, shot, "low")).error && (await stateOf(shot)).status_verified);
+
     // ----- cap -----
     const bulk: string[] = [];
     for (let i = 0; i < CAP + 1; i++) bulk.push(await makeItem(`Status Test Bulk ${i}`));
