@@ -150,3 +150,64 @@ Put the matching decisions (`normalizeName`, `decideMatch`) in `shared/` as pure
 | Single maintainer | Keep stack small, document setup, own accounts under a shared team email |
 
 - **Shelf scan: written, not yet applied or tested** (`20261016000000_shelf_scans.sql`, `api/shelf.ts`, `shared/shelfScan.ts`, `src/features/shelf/`). `confirm_shelf_scan` goes through `set_item_status`, so the two-student verification, cooldown and presence gate apply per item. Apply the migration, then try a real shelf photo; the prompt and box handling are untested against Gemini. Shelf uploads are not saved to the phone first (unlike single-item captures), so a dropped connection loses that photo.
+
+## 8. Crowdsourcing model (proposed 2026-10-07)
+
+> Original proposal from 2026-10-07, kept for reference. The open-access model in sections 1 and 5 (statuses, two-student verification, presence gate) is what was built and takes precedence where the two differ.
+
+### 9.1 Constraints
+
+- Pantry staff are busy stocking and will not enter data. They only allow access on non-open days.
+- The team will not maintain this after the project, and the professor expects a product that can run without us. So **no design may depend on a person approving, moderating or cleaning data on a schedule.**
+- Contributors are not a trusted group. Anyone can photograph an item, including someone who wants to cause trouble.
+- Data is imperfect and we accept that. The public product shows availability only (In stock / Low / Out) with a freshness label, never a quantity.
+
+Everything below is automatic. A human admin (the pantry manager, or whoever inherits the project) can undo or ban, but nothing waits on them.
+
+### 9.2 Principle: a photo is input, never content
+
+The inappropriate-upload problem is solved by never publishing a contributor's photo.
+
+- A photo goes to private storage, goes through Gemini, and is **deleted once processed** (keep at most 7 days only for failed jobs, so a retry works). There is nothing to moderate afterwards, and no faces or student photos are retained, which also helps the privacy and FERPA concern in the findings.
+- Students see only text we derived (name, category) and a category icon or stock image, never what a contributor uploaded.
+- Contributors cannot type free text that reaches the public. Names come from Gemini reading the label. A manual fix is a choice from candidates or the fixed category list, not a text box. (The current manual-entry screen must be restricted for public contributors.)
+
+### 9.3 Screening every photo (before anything is stored or counted)
+
+Extend the Gemini response schema with `is_pantry_item` (packaged or whole food, a pantry or hygiene item), `contains_person`, `contains_inappropriate_content`, and `label_readable`. Reject the job (red, no data created) if the first is false or either of the others is true. A report with `label_readable` false cannot create a new item. This reuses the one Gemini call already made per photo, so it adds no cost or latency.
+
+### 9.4 Updating an existing item (In stock / Low / Out)
+
+- The contributor chooses the item and takes a photo; Gemini's name must **match that item** (the existing `decideMatch` green path). A photo of something else is rejected, so you cannot mark "rice" out with a picture of a cat.
+- The report is stored in `stock_reports` (item, contributor, status, time, `near_pantry` flag). It does not change the public status by itself.
+- **Public status is computed** from recent reports, weighted by contributor reputation and decayed with age:
+  - "Out" needs agreement from two different contributors within a window, or one high-reputation contributor. One bad report alone cannot flip an item to out.
+  - "In stock" is accepted from one report, since the harm of a false positive is small and a quick correction follows.
+  - No confirmation in 7 days shows **Unknown**, not a stale "In stock".
+- Every public item shows "last confirmed N hours ago".
+
+### 9.5 Adding a new item (the case where staff will not help)
+
+- Photo passes screening, Gemini reads the name and categories, no existing item matches, so a **pending item** is created. It is invisible to students.
+- It becomes public when a **second, different contributor** photographs the same item and Gemini's name matches the pending one (the same word-by-word matching, so the two photos agree independently). One person cannot approve their own item.
+- An uncorroborated pending item **expires after 14 days** and is deleted by the existing sweep cron. Nobody needs to clean up.
+- This uses only machinery we already have (identify, `decideMatch`, the sweep).
+
+### 9.6 Abuse controls that need no moderator
+
+- **Sign-in:** magic link restricted to the UTA email domain. This ties actions to an account without an allowlist someone must maintain, and makes mass account creation harder.
+- **Rate limits:** per-user caps on reports and new items per day, enforced in the database. This also protects the shared Gemini quota.
+- **Reputation, computed not managed:** a contributor's reports that later agree with other people's raise their weight; reports that are repeatedly contradicted lower it, and below a threshold their reports are ignored automatically. No one has to decide who is trusted.
+- **Location (soft signal only):** the capture screen asks for location and records `near_pantry` (within a radius of the pantry). Near-pantry reports get more weight; far or missing location reports count less but are not blocked, because GPS fails indoors and can be spoofed. Camera-only capture (no gallery picker) so photos cannot be reused.
+- **Audit and undo:** every report is attributable and reversible by an admin, but this is an optional safety net.
+
+### 9.7 What this does not solve (said plainly)
+
+- A determined person with a real photo of a real item can still submit a false report. The effect is bounded: a false "out" needs a second person to count, a false "in stock" is corrected by the next honest report, and everything fades to Unknown after 7 days. The result is a briefly wrong dot, not corrupted data.
+- With few active contributors, new items and "out" reports will be slow to confirm. The product depends on enough regular users; that is a real adoption risk and should be said in the final presentation.
+- The Gemini key and its quota are a hidden dependency. Whoever inherits this needs to own a key; per-user limits only soften this.
+- Self-checkout (students tapping items they took) can feed the same signal in a later phase, e.g. several checkouts of an item without any restock report.
+
+### 9.8 Sustainability story for the course
+
+The product keeps working without us because: no staff time is needed; no moderation queue exists; bad data decays on its own; storage stays small because photos are deleted; and the only recurring cost is the Gemini quota. The handover checklist is: transfer the Vercel and Supabase accounts, set the Gemini key, and name an optional admin.
