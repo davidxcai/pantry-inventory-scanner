@@ -1,6 +1,7 @@
 import type { CatalogRow, PublicAvailability } from '../../../shared/catalogView'
 import { isStale, timeAgo } from '../../../shared/freshness'
 import { AvailabilityBadgeFor, availabilityLabel } from './AvailabilityBadge'
+import { ItemHistory } from './ItemHistory'
 import { thumbUrl, useSetStatus } from './useCatalog'
 
 type Props = {
@@ -37,6 +38,7 @@ export function ItemDialog({ item, signedIn, onClose }: Props) {
             : 'Not yet verified'}
           {stale && item.updated_at && ' · may be out of date'}
         </p>
+        <ItemHistory itemId={item.id} />
 
         {signedIn && item.pending && (
           <p className="mt-2 text-xs opacity-70">

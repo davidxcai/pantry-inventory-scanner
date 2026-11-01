@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { CatalogRow, PublicAvailability } from '../../../shared/catalogView'
+import { HISTORY_KEY } from './useItemHistory'
 
 const KEY = ['public-catalog']
 
@@ -31,6 +32,9 @@ export function useSetStatus() {
       const { error } = await supabase.rpc('set_item_status', { p_item_id: itemId, p_status: status })
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: KEY })
+      queryClient.invalidateQueries({ queryKey: HISTORY_KEY })
+    },
   })
 }

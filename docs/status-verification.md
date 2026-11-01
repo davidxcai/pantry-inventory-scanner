@@ -36,6 +36,9 @@ There is no edit mode. Tapping an item card opens a detail view; signed-in users
 - On a pending Low or Out item the detail view says another student reported it and to tap the same button to confirm. The button stays enabled while an item is pending; it is disabled only when the status already matches and is verified.
 - Rule violations (self-confirm, cooldown, cap) show as an error alert in the detail view, using the database error message.
 
+### Recent updates timeline
+The detail view lists the item's last 5 `item_status_log` rows ("Marked low · name · 2h ago", "Confirmed out · …"). They come from `item_history(item_id, limit)` (migration `20261101030000_item_history.sql`), a security-definer function open to anon like `available_items`: it returns status, kind, display name and time only, never user ids, and nothing for `other`-category items. Each log row keeps a copy of the updater's display name (`item_status_log.user_name`, filled by a before-insert trigger), so a deleted account's updates still show their name; the current profile name is preferred while the account exists. Photo updates log as `report` with no source column, so the timeline cannot say "via photo".
+
 ## Known gaps
 - Close-up photos (Add item, `resolve_job_existing` / `resolve_job_new`) set the status through `apply_item_status`, not `set_item_status`. They are never pending, never confirm anything, and skip the cooldown and the out cap. The photo is the proof, but a close-up can replace a pending Low/Out report without a second student. Shelf scans do go through `set_item_status`.
 - Two real UTA accounts can confirm each other's reports. This takes effort and both accounts are attributable.
