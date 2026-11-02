@@ -35,7 +35,7 @@ Registration was limited to `@uta.edu` / `@mavs.uta.edu`, but Supabase's "Confir
 ## Flows (`src/features/auth/AuthScreen.tsx`, `ResetPasswordScreen.tsx`)
 - **Register**: `signUp` with `emailRedirectTo` = `<origin>/`. With confirmation on, it returns no session, and the screen says to check email (and junk). The link confirms the account, signs the user in and lands on the catalog.
 - **Sign in before confirming**: Supabase returns `email_not_confirmed`. The screen explains it and shows **Resend confirmation email** (`auth.resend({ type: 'signup' })`).
-- **Forgot password**: `resetPasswordForEmail` with `redirectTo` = `<origin>/reset-password`. The link opens a recovery session there and the user sets a new password (`updateUser`). An expired or used link shows "invalid or has expired" with a way to request a new one.
+- **Forgot password**: `resetPasswordForEmail` with `redirectTo` = `<origin>/reset-password`. The link opens a recovery session there and the user sets a new password (`updateUser`). An expired or used link shows "invalid or has expired" with a way to request a new one. If the requesting origin isn't an allowed redirect, Supabase sends the link to the Site URL instead. `src/main.tsx` listens for the `PASSWORD_RECOVERY` event at startup and moves the user to `/reset-password` from whichever page the link opened.
 - `<origin>` is `window.location.origin`, so links from local dev return to localhost.
 
 ## Verified (2026-11-01)
