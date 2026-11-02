@@ -16,17 +16,36 @@ export function AuthScreen() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // Signed in with an address whose confirmation link was never clicked.
+  const [unconfirmed, setUnconfirmed] = useState(false)
 
   function switchMode(next: Mode) {
     setMode(next)
     setError(null)
     setNotice(null)
+    setUnconfirmed(false)
+  }
+
+  async function resendConfirmation() {
+    setBusy(true)
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/` },
+    })
+    setBusy(false)
+    setError(error ? error.message : null)
+    if (!error) {
+      setUnconfirmed(false)
+      setNotice('A new confirmation link is on its way. Check your junk folder too.')
+    }
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setNotice(null)
+    setUnconfirmed(false)
 
     if (mode === 'register' && !isUtaEmail(email)) {
       setError(UTA_EMAIL_MESSAGE)
@@ -42,16 +61,21 @@ export function AuthScreen() {
         redirectTo: `${window.location.origin}/reset-password`,
       })
       if (error) setError(error.message)
-      else setNotice('If an account exists for that email, a reset link is on its way.')
+      else setNotice('If an account exists for that email, a reset link is on its way. Check your junk folder too.')
     } else if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email: trimmed, password })
-      if (error) setError(error.message)
+      if (error?.code === 'email_not_confirmed') {
+        setUnconfirmed(true)
+        setError('Confirm your email first. Open the link we sent you when you registered.')
+      } else if (error) setError(error.message)
       else await navigate({ href: redirect ?? '/' })
     } else {
       const { data, error } = await supabase.auth.signUp({
         email: trimmed,
         password,
         options: {
+          // The confirmation link signs them in and lands on the catalog.
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             first_name: first,
             last_name: last,
@@ -60,8 +84,12 @@ export function AuthScreen() {
         },
       })
       if (error) setError(error.message)
+      // With email confirmation on, Supabase doesn't error for an existing
+      // email. It returns a placeholder user with no identities instead.
+      else if (data.user && data.user.identities?.length === 0)
+        setError('An account with this email already exists. Sign in, or use "Forgot password" if you need to reset it.')
       else if (data.session) await navigate({ href: redirect ?? '/' })
-      else setNotice('Check your email to confirm your account, then sign in.')
+      else setNotice('Check your email (and junk folder) for a confirmation link, then sign in.')
     }
     setBusy(false)
   }
@@ -152,6 +180,11 @@ export function AuthScreen() {
       </form>
 
       {error && <div role="alert" className="alert alert-error alert-soft">{error}</div>}
+      {unconfirmed && (
+        <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={resendConfirmation}>
+          Resend confirmation email
+        </button>
+      )}
       {notice && <div role="status" className="alert alert-info alert-soft">{notice}</div>}
     </main>
   )
