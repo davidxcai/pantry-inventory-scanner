@@ -8,7 +8,7 @@ import { useCaptureQueue } from './useCaptureQueue'
 type Review = { photo: Blob; thumb: Blob; url: string }
 
 export function CaptureScreen() {
-  const { enqueue, last, pending } = useCaptureQueue()
+  const { enqueue, last, pending, memoryOnly } = useCaptureQueue()
   const [review, setReview] = useState<Review | null>(null)
   const [busy, setBusy] = useState(false)
   const [preparing, setPreparing] = useState(false)
@@ -43,8 +43,9 @@ export function CaptureScreen() {
       await enqueue(review.photo, review.thumb, 'in_stock')
       setAdded((n) => n + 1)
       setReview(null)
-    } catch {
-      setError('Could not save the photo on this device. Free some storage or allow site storage, then try Confirm again.')
+    } catch (err) {
+      console.error('enqueue failed', err)
+      setError('Could not add the photo. Try Confirm again.')
     } finally {
       setBusy(false)
     }
@@ -61,6 +62,11 @@ export function CaptureScreen() {
       </header>
 
       {error && <div role="alert" className="alert alert-error alert-soft">{error}</div>}
+      {memoryOnly && pending.length > 0 && (
+        <div role="status" className="alert alert-warning alert-soft">
+          This browser won't save photos on the phone (Private Browsing does this). Keep this tab open until uploads finish.
+        </div>
+      )}
 
       {review ? (
         <>
