@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import type { PublicAvailability } from '../../../shared/catalogView'
 import type { RejectReason } from '../../../shared/guardrail'
 
-export type JobStatus = 'queued' | 'processing' | 'green' | 'yellow' | 'red' | 'waiting_quota' | 'rejected'
+export type JobStatus = 'queued' | 'processing' | 'green' | 'yellow' | 'red' | 'waiting_quota' | 'rejected' | 'cancelled'
 
 export type IntakeJob = {
   id: string
@@ -18,7 +18,7 @@ export type IntakeJob = {
   items: { name: string; categories: string[] } | null
 }
 
-// Jobs for one batch, kept live through Realtime.
+// Jobs for one batch, kept live through Realtime. Cancelled jobs are left out.
 export function useIntakeJobs(batchId: string) {
   const queryClient = useQueryClient()
   const key = ['intake-jobs', batchId]
@@ -42,6 +42,7 @@ export function useIntakeJobs(batchId: string) {
         .from('intake_jobs')
         .select('id, status, availability, error, reject_reason, model_used, created_at, identified, items(name, categories)')
         .eq('batch_id', batchId)
+        .neq('status', 'cancelled')
         .order('created_at', { ascending: false })
       if (error) throw error
       return data as unknown as IntakeJob[]

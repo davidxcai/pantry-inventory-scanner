@@ -28,6 +28,13 @@ export async function uploadCapture(c: PendingCapture): Promise<void> {
   if (error && error.code !== '23505') throw error
 }
 
+// Cancel a job that never produced an item. The server refuses jobs that are already done, and an
+// identify run still in flight drops its result instead of reviving the job.
+export async function cancelJob(jobId: string): Promise<void> {
+  const { error } = await supabase.rpc('cancel_intake_job', { p_job_id: jobId })
+  if (error) throw error
+}
+
 // Ask the server to identify a job. The result arrives through Realtime, so failures here only
 // mean the job stays "queued" until someone retries it from the queue screen.
 export async function requestIdentify(jobId: string): Promise<void> {

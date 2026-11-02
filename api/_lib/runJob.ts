@@ -22,7 +22,8 @@ export async function claimJob(jobId: string, userId?: string) {
   return data;
 }
 
-export type JobOutcome = "green" | "yellow" | "red" | "waiting_quota" | "rejected";
+// "cancelled": the user cancelled the job while it was being identified; nothing was written.
+export type JobOutcome = "green" | "yellow" | "red" | "waiting_quota" | "rejected" | "cancelled";
 
 export async function runJob(jobId: string, claimed: { photo_path: string; attempts: number }): Promise<JobOutcome> {
   try {
@@ -47,7 +48,7 @@ export async function runJob(jobId: string, claimed: { photo_path: string; attem
     if (result.kind !== "ok") {
       const status = result.kind === "waiting_quota" ? "waiting_quota" : "red";
       const error = result.kind === "failed" ? result.error : "all models are out of quota today";
-      await admin.from("intake_jobs").update({ status, attempts, error }).eq("id", jobId);
+      if (!(await writeUnlessCancelled(jobId, { status, attempts, error }))) return "cancelled";
       return status;
     }
 
@@ -55,15 +56,13 @@ export async function runJob(jobId: string, claimed: { photo_path: string; attem
       // Nothing is created. The thumbnail bucket is public, so take the photo out of it; the
       // full-size copy stays in the private bucket for auditing.
       await admin.storage.from("thumbnails").remove([`${jobId}.jpg`]);
-      await admin
-        .from("intake_jobs")
-        .update({ status: "rejected", reject_reason: result.value.reason, identified: null, model_used: result.model, attempts, error: null })
-        .eq("id", jobId);
+      const fields = { status: "rejected", reject_reason: result.value.reason, identified: null, model_used: result.model, attempts, error: null };
+      if (!(await writeUnlessCancelled(jobId, fields))) return "cancelled";
       return "rejected";
     }
     const item = result.value.item;
     // Keep what Gemini read, so the user can resolve the job from the review screen.
-    await admin.from("intake_jobs").update({ identified: item, model_used: result.model, attempts }).eq("id", jobId);
+    if (!(await writeUnlessCancelled(jobId, { identified: item, model_used: result.model, attempts }))) return "cancelled";
 
     const match = matchJob(item.name, await loadCatalog());
     if (match.kind === "green") {
@@ -73,7 +72,7 @@ export async function runJob(jobId: string, claimed: { photo_path: string; attem
     }
     if (match.kind === "yellow") {
       // No item yet: the user picks a candidate or creates a new one.
-      await admin.from("intake_jobs").update({ status: "yellow", candidates: match.candidates }).eq("id", jobId);
+      if (!(await writeUnlessCancelled(jobId, { status: "yellow", candidates: match.candidates }))) return "cancelled";
       return "yellow";
     }
     // New item: create it now with the status the user chose, and show it yellow once so the user can check it.
@@ -90,8 +89,22 @@ export async function runJob(jobId: string, claimed: { photo_path: string; attem
     return "yellow";
   } catch (err) {
     // Unexpected failure: leave the job retryable instead of stuck in "processing".
+    // The resolve functions refuse a job cancelled mid-run; that is not a failure.
     const message = err instanceof Error ? err.message : String(err);
-    await admin.from("intake_jobs").update({ status: "red", error: message.slice(0, 300) }).eq("id", jobId);
+    if (!(await writeUnlessCancelled(jobId, { status: "red", error: message.slice(0, 300) }))) return "cancelled";
     throw err;
   }
+}
+
+// Update a job unless the user cancelled it while it was running, so a late result never
+// revives it. Returns false when the job was cancelled and nothing was written.
+async function writeUnlessCancelled(jobId: string, fields: Record<string, unknown>): Promise<boolean> {
+  const { data, error } = await admin
+    .from("intake_jobs")
+    .update(fields)
+    .eq("id", jobId)
+    .neq("status", "cancelled")
+    .select("id");
+  if (error) throw error;
+  return data.length > 0;
 }

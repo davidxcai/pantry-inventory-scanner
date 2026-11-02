@@ -5,8 +5,8 @@ import { supabase } from '../../lib/supabase'
 import { REJECT_LABELS } from '../../../shared/guardrail'
 import { StatusDot, statusLabel } from './StatusDot'
 import { useCaptureQueue } from './useCaptureQueue'
-import { useIntakeJobs, type IntakeJob } from './useIntakeJobs'
-import { requestIdentify } from './uploader'
+import { useIntakeJobs, type IntakeJob, type JobStatus } from './useIntakeJobs'
+import { cancelJob, requestIdentify } from './uploader'
 import { availabilityText } from './availability'
 
 const thumbUrl = (jobId: string) => supabase.storage.from('thumbnails').getPublicUrl(`${jobId}.jpg`).data.publicUrl
@@ -26,6 +26,12 @@ export function QueueScreen() {
   async function retry(job: IntakeJob) {
     setRetryError(null)
     await requestIdentify(job.id).catch((e: Error) => setRetryError(e.message))
+    void queryClient.invalidateQueries({ queryKey: ['intake-jobs', batchId] })
+  }
+
+  async function cancel(job: IntakeJob) {
+    setRetryError(null)
+    await cancelJob(job.id).catch((e: Error) => setRetryError(`Could not cancel: ${e.message}`))
     void queryClient.invalidateQueries({ queryKey: ['intake-jobs', batchId] })
   }
 
@@ -85,6 +91,9 @@ export function QueueScreen() {
                 {job.status === 'yellow' ? 'Review' : 'Enter'}
               </Link>
             )}
+            {canCancel(job) && (
+              <button className="btn btn-xs btn-ghost" onClick={() => void cancel(job)}>Cancel</button>
+            )}
             <StatusDot status={job.status} />
           </li>
         ))}
@@ -92,6 +101,10 @@ export function QueueScreen() {
     </main>
   )
 }
+
+// Only photos that never produced an item; once one exists the catalog has already changed.
+const CANCELLABLE: JobStatus[] = ['queued', 'processing', 'red', 'waiting_quota', 'yellow']
+const canCancel = (job: IntakeJob) => !job.items && CANCELLABLE.includes(job.status)
 
 function usePendingUrls(pending: { id: string; thumb: Blob }[]) {
   const [urls, setUrls] = useState<Record<string, string>>({})

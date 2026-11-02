@@ -9,6 +9,7 @@ const DOT: Record<JobStatus, { cls: string; label: string }> = {
   rejected: { cls: 'bg-error', label: 'Not accepted' },
   // Neutral on purpose: waiting for the daily quota reset is not a failure.
   waiting_quota: { cls: 'bg-neutral', label: 'Waiting for quota' },
+  cancelled: { cls: 'bg-base-300', label: 'Cancelled' },
 }
 
 export function StatusDot({ status }: { status: JobStatus }) {
