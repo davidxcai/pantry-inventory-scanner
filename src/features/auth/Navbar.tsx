@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
+  IconBell,
   IconCalendarEvent,
   IconInfoCircle,
   IconListDetails,
@@ -11,6 +12,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { supabase } from '../../lib/supabase'
+import { useWatches } from '../catalog/useWatches'
 import { displayNameOf, useSession } from './useSession'
 
 const INFO_URL = 'https://www.uta.edu/student-affairs/health-and-wellness/maverick-pantry'
@@ -19,6 +21,9 @@ const BOOK_URL = 'https://app.pantrysoft.com/login/maverickpantry'
 export function Navbar() {
   const session = useSession()
   const [open, setOpen] = useState(false)
+  const { data: watches } = useWatches(!!session)
+  const changed = watches?.filter((w) => w.changed).length ?? 0
+  const changedBadge = changed > 0 && <span className="badge badge-info badge-sm">{changed}</span>
   const close = () => setOpen(false)
 
   return (
@@ -58,6 +63,7 @@ export function Navbar() {
                 <IconUser size={18} /> {displayNameOf(session)}
               </button>
               <ul tabIndex={0} className="menu dropdown-content z-10 mt-2 w-44 rounded-box bg-base-100 p-2 shadow">
+                <li><Link to="/watching"><IconBell size={18} /> Watching {changedBadge}</Link></li>
                 <li><Link to="/queue"><IconListDetails size={18} /> My scans</Link></li>
                 <li>
                   <button onClick={() => void supabase.auth.signOut()}>
@@ -100,6 +106,13 @@ export function Navbar() {
                 <IconCalendarEvent size={22} /> Book Appointment
               </a>
             </li>
+            {session && (
+              <li>
+                <Link to="/watching" onClick={close}>
+                  <IconBell size={22} /> Watching {changedBadge}
+                </Link>
+              </li>
+            )}
             {session && (
               <li>
                 <Link to="/queue" onClick={close}>

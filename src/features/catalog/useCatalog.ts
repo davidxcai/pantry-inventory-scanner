@@ -15,7 +15,7 @@ export function useCatalog() {
     queryFn: async (): Promise<CatalogRow[]> => {
       const { data, error } = await supabase
         .from('available_items')
-        .select('id, name, category, thumbnail_path, availability, updated_at, updated_by_name, pending')
+        .select('id, name, category, thumbnail_path, availability, updated_at, updated_by_name, pending, reported_by_me')
         .limit(5000)
       if (error) throw error
       return data as CatalogRow[]

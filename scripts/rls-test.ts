@@ -127,6 +127,49 @@ async function main() {
     const before = await count();
     const again = await alice.client.rpc("resolve_job_existing", { p_job_id: jobId, p_item_id: itemId });
     check("resolving twice is harmless and adds no item", !again.error && (await count()) === before, again);
+
+    // ----- watches and the notification queue -----
+    const aWatch = await guest.from("item_subscriptions").insert({ user_id: alice.id, item_id: itemId });
+    check("anon cannot watch an item", !!aWatch.error, aWatch);
+    const aQueue = await guest.from("notification_queue").select("id");
+    check("anon cannot read the notification queue", (aQueue.data ?? []).length === 0, aQueue);
+
+    const watch = await alice.client.from("item_subscriptions").insert({ user_id: alice.id, item_id: itemId });
+    check("user can watch an item", !watch.error, watch);
+    const bobWatch = await bob.client.from("item_subscriptions").insert({ user_id: bob.id, item_id: itemId });
+    check("a second user can watch the same item", !bobWatch.error, bobWatch);
+    const spoofWatch = await bob.client.from("item_subscriptions").insert({ user_id: alice.id, item_id: crypto.randomUUID() });
+    check("user cannot create a watch for someone else", !!spoofWatch.error, spoofWatch);
+    const bobSeesWatches = await bob.client.from("item_subscriptions").select("user_id");
+    check("user sees only their own watches", bobSeesWatches.data?.length === 1 && bobSeesWatches.data[0].user_id === bob.id, bobSeesWatches);
+    const seenWrite = await alice.client.from("item_subscriptions").update({ last_seen_at: "2000-01-01" }).eq("user_id", alice.id).select();
+    check("user cannot edit a watch directly", !seenWrite.data?.length, seenWrite);
+
+    // A status update by bob (written straight to the log, so the pantry-hours gate does not apply).
+    await admin.from("item_status_log").insert({ item_id: itemId, status: "low", user_id: bob.id }).throwOnError();
+    const queued = await admin.from("notification_queue").select("user_id, status, kind").eq("item_id", itemId);
+    check(
+      "an update queues the watcher but not the student who made it",
+      queued.data?.length === 1 && queued.data[0].user_id === alice.id && queued.data[0].status === "low",
+      queued,
+    );
+    const uQueue = await alice.client.from("notification_queue").select("id");
+    check("user cannot read the notification queue", (uQueue.data ?? []).length === 0, uQueue);
+    const uClaim = await alice.client.rpc("claim_notifications", { p_users: 10 });
+    check("claim_notifications is not callable by users", !!uClaim.error, uClaim);
+
+    const mine = await alice.client.rpc("my_watches");
+    check("my_watches flags an item someone else updated", mine.data?.length === 1 && mine.data[0].changed === true, mine);
+    const bobMine = await bob.client.rpc("my_watches");
+    check("my_watches does not flag your own update", bobMine.data?.length === 1 && bobMine.data[0].changed === false, bobMine);
+    const seen = await alice.client.rpc("mark_watches_seen");
+    const afterSeen = await alice.client.rpc("my_watches");
+    check("mark_watches_seen clears the flag", !seen.error && afterSeen.data?.[0]?.changed === false, afterSeen);
+
+    const bobDeletesAlice = await bob.client.from("item_subscriptions").delete().eq("user_id", alice.id).select();
+    check("user cannot delete someone else's watch", !bobDeletesAlice.data?.length, bobDeletesAlice);
+    const unwatch = await alice.client.from("item_subscriptions").delete().eq("item_id", itemId).eq("user_id", alice.id).select();
+    check("user can stop watching", unwatch.data?.length === 1, unwatch);
   } finally {
     await admin.from("intake_jobs").delete().eq("id", jobId);
     await admin.from("items").delete().eq("id", itemId);

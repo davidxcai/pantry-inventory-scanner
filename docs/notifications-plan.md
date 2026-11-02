@@ -1,68 +1,63 @@
-# Stock update notifications — plan
+# Stock update notifications
 
-Status: **planned, not started** (decided 2026-10-14). Nothing is implemented yet.
+Status: **built, migrations not yet applied** (2026-11-01). Planned 2026-10-14; the email provider changed from Gmail SMTP to Resend once the project got a domain.
 
 ## Goal
-A signed-in student can "watch" any catalog item, regardless of its status (in stock, low, out). When anyone else updates that item's status, the watcher gets an email.
+A signed-in student can "watch" any catalog item, whatever its status (in stock, low, out). When anyone else updates that item, the watcher gets an email, plus an in-app badge.
 
 ## Decisions
 
 | Question | Decision |
 |---|---|
-| What counts as an update? | **Any** call to `set_item_status`, including re-confirming the same status (in stock -> in stock). Recent verification is itself useful information. |
+| What counts as an update? | Every row written to `item_status_log`: a new report (pending), a second student's confirmation, a close-up photo (`apply_item_status`), a shelf scan. Re-reporting an already verified status writes nothing, so it notifies nobody. |
 | Subscription lifetime | Persistent until the user turns it off. |
-| Delivery | **Batched**: one digest email per user listing every watched item that changed, not one email per change. Target cadence ~10 minutes. |
-| Self-notify | No. The user who made the update is never notified about it. |
-| Prediction ("likely back in stock") emails | Out of scope for now. Keep the queue generic enough (an event `type` column) to add later. See `prediction-model.md`. |
-| Email provider | **Gmail SMTP** on a dedicated account (free, no domain). See constraints below. |
+| Delivery | **Batched**: one digest email per user every 10 minutes. Several updates to one item collapse to the latest. |
+| Self-notify | No. The student who made the update is never queued for it. |
+| Prediction ("likely back in stock") emails | Out of scope. `notification_queue.type` leaves room for it. See `prediction-model.md`. |
+| Email provider | **Resend**, free tier (100/day, 3,000/month), installed through the Vercel Marketplace. Sends from `alerts@utapantry.xyz`. |
 
-## Constraints that drove the provider choice
-- Free only. No domain name, and UTA does not back the project, so no UTA-provided domain or mailbox.
-- Resend free tier requires a verified domain. Without one it can only send from `onboarding@resend.dev` to the account owner's own address, so it cannot reach students.
-- Do not send a `@gmail.com` "from" address through Brevo, SendGrid, etc. Gmail's DMARC policy causes rejection or spam-foldering.
-- Supabase's built-in auth mailer is rate-limited and meant for auth mail only.
+## Domain and email setup (done 2026-11-01)
+Full details, including Supabase auth emails sent through the same Resend account, are in `email-and-accounts.md`.
+- `utapantry.xyz` was bought through Vercel and uses Vercel nameservers. It is the production alias.
+- Resend integration `resend-email-citron-book` (free plan) is connected to the project. It sets `RESEND_API_KEY` and `RESEND_EMAIL_DOMAIN`.
+- Resend added its SPF (`send`) and DKIM (`resend._domainkey`) records itself. We added `_dmarc TXT "v=DMARC1; p=none;"`. Tighten to `p=quarantine` once mail has been landing for a while.
+- The sender name and footer say it is a student-run project not affiliated with UTA.
 
-## Design
+## How it works
 
-### Data (new migration)
-- `item_subscriptions(user_id, item_id, created_at)`, primary key `(user_id, item_id)`, cascade on delete. RLS: users select/insert/delete only their own rows.
-- `notification_queue(id, user_id, item_id, status, type default 'status_update', created_at, sent_at null)`. No client policies; written only by the database function and read by the sender with the service role.
-- Add `last_seen_at` per subscription (or a small `subscription_seen` mechanism) for the in-app "changed since you last looked" badge.
-- Extend `set_item_status` (`supabase/migrations/20261012000000_crowdsourced_status.sql`): after the update and log insert, insert one queue row per subscriber of `p_item_id`, excluding `auth.uid()`. Keep it in the same transaction so queue and status never diverge.
+### Data (`supabase/migrations/20261101000000_notifications.sql`)
+- `item_subscriptions(user_id, item_id, created_at, last_seen_at)`. Users select, insert and delete their own rows. `last_seen_at` changes only through `mark_watches_seen()`.
+- `notification_queue`: no client access. Filled by the trigger `item_status_log_notify` (after insert on `item_status_log`), one row per watcher other than the updater. A trigger on the log instead of edits to `set_item_status` catches every update path without another copy of that function.
+- `my_watches()`: the user's watches with a `changed` flag (someone else logged an update since `last_seen_at`). Security definer because the log has no client access.
+- `claim_notifications(p_users)` / `release_notifications(ids)`: service role only. Claiming marks rows sent before sending, so overlapping runs cannot double-send; a failed send releases them. Rows for items the user stopped watching are claimed but not returned.
 
 ### Sending
-- `api/notify.ts` (follow the auth pattern in `api/sweep.ts`: `Authorization: Bearer $CRON_SECRET`).
-- Drains unsent queue rows, groups by user, collapses multiple rows for the same item to the latest, sends one digest per user, marks rows `sent_at`.
-- Look up the recipient email from `auth.users` with the service-role client (`api/_lib/clients.ts` `admin`). Never expose it to the client.
-- `sendEmail()` lives in one module so the transport can be swapped (Gmail SMTP now, Resend if a domain is acquired) by changing that module and env vars only.
-- Gmail SMTP via nodemailer, `smtp.gmail.com`. Env vars: `SMTP_USER`, `SMTP_PASS` (app password).
-- Cap per run; leave the remainder in the queue if near Gmail's ~500 recipients/day limit.
-- Every email includes a one-click unsubscribe link (signed token, per user) plus a link to manage watches in the app.
+- `shared/notifyDigest.ts`: grouping, collapsing, email text/html, unsubscribe token. Unit tests in `notifyDigest.test.ts`.
+- `api/_lib/sendEmail.ts`: the only file that knows about Resend. Adds `List-Unsubscribe` one-click headers.
+- `api/notify.ts`: `Authorization: Bearer $CRON_SECRET`. Up to 25 users per run. On Resend's 429 it releases the rest and stops until the next run.
+- `api/unsubscribe.ts`: removes all of a user's watches. GET shows a confirm button and only POST acts, because Microsoft Safe Links (UTA mail) opens links in emails. The token is an HMAC of the user id keyed with `SUPABASE_SECRET_KEY`, so no extra secret is needed. Rotating that key invalidates old links.
 
-### Scheduling
-- Vercel Hobby only allows daily crons, so `vercel.json` cron is not enough for ~10-minute batching.
-- Use Supabase `pg_cron` + `pg_net` to call `/api/notify` every ~10 minutes with the cron secret. (Daily Vercel cron can remain as a backstop.)
+### Scheduling (`supabase/migrations/20261101010000_notify_schedule.sql`)
+Vercel Hobby crons are daily only, so Supabase `pg_cron` + `pg_net` call `/api/notify` every 10 minutes. The URL and cron secret are read from Supabase Vault (`notify_url`, `cron_secret`), not stored in the migration.
 
-### UI
-- Bell/"Notify me" toggle on each catalog item (`src/features/student/CatalogScreen.tsx`, `useCatalog.ts`), available for every status. Signed-out users are prompted to sign in.
-- "Watching" list to manage all subscriptions in one place.
-- In-app badge: watched items changed since the user last looked. This is the fallback if emails land in spam.
-- Follow `component-conventions` (hook in its own folder, TanStack Query for server state).
+### UI (`src/features/catalog/`)
+- `ItemDialog.tsx`: "Notify me when this changes" / "Stop notifying me". Signed-out users get a sign-in link.
+- `WatchingScreen.tsx` at `/watching`: watched items, with an "Updated" badge on ones that changed since the last visit. Opening it clears the flags.
+- `ItemCard.tsx` (moved out of `CatalogScreen.tsx`): bell icon on watched items, used by both screens.
+- Navbar: "Watching" link with a count of changed items. This is the fallback if emails land in junk.
+- `useWatches.ts`: query and mutations (TanStack Query).
+
+## To go live
+1. Run in the Supabase SQL editor (the secret is the Vercel project's `CRON_SECRET`):
+   `select vault.create_secret('https://utapantry.xyz/api/notify', 'notify_url');`
+   `select vault.create_secret('<CRON_SECRET>', 'cron_secret');`
+2. Apply both migrations, then run `npm run rls-test` against the project.
+   - The schedule migration was applied 2026-11-01. The first attempt at the notifications migration stopped partway, leaving both tables (empty) but no functions. Before re-running it, reset with:
+     `drop trigger if exists item_status_log_notify on public.item_status_log; drop function if exists public.queue_status_notifications(); drop table if exists public.notification_queue; drop table if exists public.item_subscriptions;`
+   - Until `/api/notify` is deployed and the Vault secrets exist, the cron's calls fail harmlessly (visible in the `pg_net` logs).
+3. Deploy.
+4. Watch an item with a `@mavs.uta.edu` account, update it from another account, and check the inbox and junk folder after the next run.
 
 ## Risks
-- Mail from a `@gmail.com` address to `@uta.edu` / `@mavs.uta.edu` (Microsoft 365) may land in junk, especially at first. Test early; tell users to mark as not junk.
-- Google may throttle or suspend an account that sends automated mail. Unlikely at pantry volume; the swappable sender is the mitigation.
-- The only real fix for deliverability is a domain (about $1-12/yr) plus Resend free tier (100/day, 3,000/month).
-
-## Prerequisites (manual, by the project owner)
-1. Create a dedicated Gmail account (not a personal one), enable 2FA, generate an app password.
-2. Add `SMTP_USER`, `SMTP_PASS`, and `CRON_SECRET` to Vercel env vars and local `.env`.
-3. Enable `pg_cron` and `pg_net` on the Supabase project.
-
-## Build order
-1. Migration: tables, RLS, `set_item_status` change. Extend `scripts/rls-test.ts` for the new tables.
-2. `sendEmail()` + digest builder in `shared/` with unit tests (grouping, collapsing, self-exclusion).
-3. `api/notify.ts` + unsubscribe endpoint.
-4. `pg_cron` schedule.
-5. Catalog toggle, watching list, in-app badge.
-6. Send a real test to a `@mavs.uta.edu` address and check junk-folder behavior.
+- New domains have no sending reputation, so the first emails to Microsoft 365 may land in junk. Ask early users to mark them "not junk".
+- 100 emails/day on the free tier, shared with Supabase sign-up and password-reset emails. With 25 users per run, a busy day can run out; the rest go out the next day.

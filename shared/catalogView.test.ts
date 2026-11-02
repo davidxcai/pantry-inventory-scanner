@@ -10,6 +10,7 @@ const row = (o: Partial<CatalogRow> & { name: string }): CatalogRow => ({
   updated_at: null,
   updated_by_name: null,
   pending: false,
+  reported_by_me: false,
   ...o,
 });
 

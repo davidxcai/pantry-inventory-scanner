@@ -12,6 +12,8 @@ export type CatalogRow = {
   updated_by_name: string | null;
   // Reported by a student and not yet confirmed by a second one.
   pending: boolean;
+  // Pending and reported by the signed-in viewer, who therefore cannot confirm it.
+  reported_by_me: boolean;
 };
 
 export type CatalogFilter = {

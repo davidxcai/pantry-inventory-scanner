@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { filterCatalog, type CatalogRow } from '../../../shared/catalogView'
+import { filterCatalog } from '../../../shared/catalogView'
 import { pantryStatus } from '../../../shared/pantryGate'
-import { isStale, timeAgo } from '../../../shared/freshness'
 import { Link } from '@tanstack/react-router'
 import { IconCamera, IconPhotoScan } from '@tabler/icons-react'
 import { useSession } from '../auth/useSession'
 import { CATEGORIES, categoryLabel } from '../intake/categories'
-import { AvailabilityBadgeFor } from './AvailabilityBadge'
 import { ShelfScanBanner } from '../shelf/ShelfScanBanner'
 import { ItemDialog } from './ItemDialog'
-import { thumbUrl, useCatalog } from './useCatalog'
+import { ItemCard } from './ItemCard'
+import { useCatalog } from './useCatalog'
+import { useWatches } from './useWatches'
 
 export function CatalogScreen() {
   const { data: rows = [], isLoading, error } = useCatalog()
@@ -18,6 +18,8 @@ export function CatalogScreen() {
   const [hideOut, setHideOut] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const session = useSession()
+  const watches = useWatches(!!session)
+  const watchedIds = useMemo(() => new Set(watches.data?.map((w) => w.item_id)), [watches.data])
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000)
@@ -72,42 +74,11 @@ export function CatalogScreen() {
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {shown.map((r) => (
-          <ItemCard key={r.id} item={r} onOpen={() => setOpenId(r.id)} />
+          <ItemCard key={r.id} item={r} watching={watchedIds.has(r.id)} onOpen={() => setOpenId(r.id)} />
         ))}
       </ul>
 
       {openItem && <ItemDialog item={openItem} signedIn={!!session} onClose={() => setOpenId(null)} />}
     </main>
-  )
-}
-
-function ItemCard({ item, onOpen }: { item: CatalogRow; onOpen: () => void }) {
-  const out = item.availability === 'out'
-  const stale = isStale(item.updated_at)
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onOpen}
-        className={`card card-sm w-full overflow-hidden bg-base-200 text-left ${out ? 'opacity-60' : ''}`}
-      >
-        <figure className="aspect-square bg-base-300">
-          {item.thumbnail_path && <img src={thumbUrl(item.thumbnail_path)} alt="" loading="lazy" className="size-full object-cover" />}
-        </figure>
-        <div className="card-body gap-1">
-          <h2 className="line-clamp-2 text-sm font-medium leading-tight">{item.name}</h2>
-          <div className="flex flex-wrap items-center gap-1">
-            <AvailabilityBadgeFor availability={item.availability} />
-            {item.pending && <span className="badge badge-outline badge-sm">Pending verification</span>}
-          </div>
-          <p className={`text-xs ${stale ? 'text-warning' : 'opacity-70'}`}>
-            {item.updated_at
-              ? `Updated ${timeAgo(item.updated_at)}${item.updated_by_name ? ` by ${item.updated_by_name}` : ''}`
-              : 'Not yet verified'}
-            {stale && item.updated_at && ' · may be out of date'}
-          </p>
-        </div>
-      </button>
-    </li>
   )
 }
