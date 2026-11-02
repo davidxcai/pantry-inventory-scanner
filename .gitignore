@@ -7,3 +7,5 @@ dist
 src/routeTree.gen.ts
 .env*
 .tanstack/
+docs/lint-findings.md
+.DS_Store

@@ -1,0 +1,15 @@
+{
+  "name": "pantry-lint",
+  "private": true,
+  "type": "module",
+  "description": "ESLint toolchain, isolated because typescript-eslint needs the TS JS API (TS <6.1), while the app builds with TS 7.",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "eslint-plugin-react-refresh": "^0.4.0",
+    "globals": "^16.0.0",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}
