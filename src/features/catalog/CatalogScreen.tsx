@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { filterCatalog } from '../../../shared/catalogView'
 import { pantryStatus } from '../../../shared/pantryGate'
+import { loadErrorMessage } from '../../../shared/loadError'
 import { Link } from '@tanstack/react-router'
 import { IconCamera, IconPhotoScan } from '@tabler/icons-react'
 import { useSession } from '../auth/useSession'
@@ -68,7 +69,11 @@ export function CatalogScreen() {
         Hide items that are out of stock
       </label>
 
-      {error && <div role="alert" className="alert alert-error alert-soft">Could not load items. Check your connection and try again.</div>}
+      {error && (
+        <div role="alert" className={`alert alert-soft ${rows.length ? 'alert-warning' : 'alert-error'}`}>
+          {loadErrorMessage(error, { what: 'items', hasData: rows.length > 0, online: navigator.onLine })}
+        </div>
+      )}
       {isLoading && <span className="loading loading-spinner mx-auto" />}
       {!isLoading && !error && !shown.length && <p className="opacity-70">{rows.length ? 'No items match.' : 'No items yet.'}</p>}
 

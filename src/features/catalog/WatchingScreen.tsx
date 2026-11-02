@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { loadErrorMessage } from '../../../shared/loadError'
 import { useSession } from '../auth/useSession'
 import { ItemCard } from './ItemCard'
 import { ItemDialog } from './ItemDialog'
@@ -10,8 +11,10 @@ import { useMarkWatchesSeen, useWatches } from './useWatches'
 // opening this page clears the flags (the in-app fallback when notification emails land in junk).
 export function WatchingScreen() {
   const session = useSession()
-  const { data: rows = [], isLoading: catalogLoading } = useCatalog()
-  const { data: watches, isLoading, error } = useWatches(!!session)
+  const { data: rows = [], isLoading: catalogLoading, error: catalogError } = useCatalog()
+  const { data: watches, isLoading, error: watchesError } = useWatches(!!session)
+  // Either query failing leaves the list empty or partial, so both count.
+  const error = watchesError ?? catalogError
   const markSeen = useMarkWatchesSeen()
   const [openId, setOpenId] = useState<string | null>(null)
   // The flags as they were on arrival, so they stay visible after marking them seen.
@@ -36,7 +39,11 @@ export function WatchingScreen() {
         <p className="text-sm opacity-70">We email you when someone updates one of these items.</p>
       </header>
 
-      {error && <div role="alert" className="alert alert-error alert-soft">Could not load your watched items. Try again.</div>}
+      {error && (
+        <div role="alert" className={`alert alert-soft ${items.length ? 'alert-warning' : 'alert-error'}`}>
+          {loadErrorMessage(error, { what: 'your watched items', hasData: items.length > 0, online: navigator.onLine })}
+        </div>
+      )}
       {(isLoading || catalogLoading) && <span className="loading loading-spinner mx-auto" />}
       {!isLoading && !catalogLoading && !error && !items.length && (
         <p className="opacity-70">
