@@ -1,3 +1,6 @@
+import { inventoryProductKey } from '../../../shared/deviceInventoryPoints'
+import { recordDeviceJob } from '../points/devicePoints'
+import { refreshPoints } from '../points/refreshPoints'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { PublicAvailability } from '../../../shared/catalogView'
@@ -17,7 +20,7 @@ export type ReviewJob = {
   items: { id: string; name: string; brand: string | null; categories: string[] } | null
 }
 
-export type CatalogEntry = { id: string; name: string; thumbnail_path: string | null; categories: string[] }
+export type CatalogEntry = { id: string; name: string; brand: string | null; thumbnail_path: string | null; categories: string[] }
 
 export type ItemFields = { name: string; brand: string; categories: string[] }
 
@@ -40,7 +43,7 @@ export function useReviewJob(jobId: string) {
   const catalog = useQuery({
     queryKey: ['catalog'],
     queryFn: async (): Promise<CatalogEntry[]> => {
-      const { data, error } = await supabase.from('items').select('id, name, thumbnail_path, categories').order('name').limit(5000)
+      const { data, error } = await supabase.from('items').select('id, name, brand, thumbnail_path, categories').order('name').limit(5000)
       if (error) throw error
       return data
     },
@@ -58,6 +61,7 @@ export function useReviewJob(jobId: string) {
   })
 
   const done = () => {
+    void refreshPoints(queryClient)
     void queryClient.invalidateQueries({ queryKey: ['intake-jobs'] })
     void queryClient.invalidateQueries({ queryKey: ['review-job', jobId] })
     void queryClient.invalidateQueries({ queryKey: ['catalog'] })
@@ -68,6 +72,7 @@ export function useReviewJob(jobId: string) {
     mutationFn: async (itemId: string) => {
       const { error } = await supabase.rpc('resolve_job_existing', { p_job_id: jobId, p_item_id: itemId })
       if (error) throw error
+      await recordDeviceJob(jobId)
     },
     onSuccess: done,
   })
@@ -75,14 +80,16 @@ export function useReviewJob(jobId: string) {
   // This photo is a new item.
   const createNew = useMutation({
     mutationFn: async (f: ItemFields) => {
-      const { error } = await supabase.rpc('resolve_job_new', {
-        p_job_id: jobId,
-        p_name: f.name,
-        p_brand: f.brand || null,
-        p_size: job.data?.identified?.size ?? null,
-        p_categories: f.categories,
-      })
+      const key = inventoryProductKey(f.name, f.brand)
+      const existing = catalog.data?.find(item => inventoryProductKey(item.name,item.brand) === key)
+      const { error } = existing
+        ? await supabase.rpc('resolve_job_existing', { p_job_id: jobId, p_item_id: existing.id })
+        : await supabase.rpc('resolve_job_new', {
+          p_job_id: jobId, p_name: f.name, p_brand: f.brand || null,
+          p_size: job.data?.identified?.size ?? null, p_categories: f.categories,
+        })
       if (error) throw error
+      await recordDeviceJob(jobId)
     },
     onSuccess: done,
   })
@@ -97,6 +104,7 @@ export function useReviewJob(jobId: string) {
         p_categories: f.categories,
       })
       if (error) throw error
+      await recordDeviceJob(jobId)
     },
     onSuccess: done,
   })

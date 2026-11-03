@@ -1,3 +1,4 @@
+import { PointsHint } from '../points/PointsHint'
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { REJECT_LABELS, type RejectReason } from '../../../shared/guardrail'
@@ -39,7 +40,7 @@ export function ShelfReviewScreen({ scanId }: { scanId: string }) {
       </Shell>
     )
   }
-  if (scan.status === 'confirmed') {
+  if (scan.status === 'confirmed' && !confirm.data) {
     return <Shell><p>This scan was already confirmed.</p><Link to="/" className="btn btn-primary">Back to the catalog</Link></Shell>
   }
   if (scan.status === 'rejected') {
@@ -73,6 +74,7 @@ export function ShelfReviewScreen({ scanId }: { scanId: string }) {
     return (
       <Shell>
         <div role="status" className="alert alert-success alert-soft">Marked {updated} {updated === 1 ? 'item' : 'items'} in stock.</div>
+        {confirm.data.devicePoints !== undefined && <p role="status">{confirm.data.devicePoints > 0 ? `+${confirm.data.devicePoints} points earned on this device.` : updated > 0 ? 'Stock saved. These products already earned points within seven days.' : 'No points earned: no products were updated.'}</p>}
         {skipped.length > 0 && (
           <div role="alert" className="alert alert-warning alert-soft">
             {skipped.length} could not be updated: {[...new Set(skipped.map((s) => s.reason))].join('; ')}
@@ -112,6 +114,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <h1 className="text-xl font-semibold">Check your shelf scan</h1>
         <Link to="/" className="btn btn-sm btn-ghost">Close</Link>
       </header>
+      <PointsHint />
       {children}
     </main>
   )

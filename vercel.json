@@ -11,6 +11,10 @@
     {
       "path": "/api/sweep",
       "schedule": "5 8 * * *"
+    },
+    {
+      "path": "/api/visit-rewards-worker",
+      "schedule": "10 8 * * *"
     }
   ]
 }

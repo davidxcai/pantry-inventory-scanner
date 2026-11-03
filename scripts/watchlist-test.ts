@@ -87,7 +87,7 @@ async function main() {
     if (products.length) await admin.from('items').delete().in('id', products).throwOnError()
     for (const id of users) {
       const { error } = await admin.auth.admin.deleteUser(id)
-      if (error) throw error
+      if (error) { console.error('Could not clean up a test account:', error); process.exitCode = 1 }
     }
   }
 }

@@ -1,3 +1,4 @@
+import { refreshPoints } from '../points/refreshPoints'
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
@@ -29,7 +30,10 @@ export function useIntakeJobs(batchId: string) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'intake_jobs', filter: `batch_id=eq.${batchId}` },
-        () => void queryClient.invalidateQueries({ queryKey: ['intake-jobs', batchId] }),
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ['intake-jobs', batchId] })
+          void refreshPoints(queryClient)
+        },
       )
       .subscribe()
     return () => void supabase.removeChannel(channel)

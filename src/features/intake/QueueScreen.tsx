@@ -1,3 +1,6 @@
+import { PointReceipt } from '../points/PointReceipt'
+import { usePointActivity } from '../points/usePointActivity'
+import { PointsHint } from '../points/PointsHint'
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -6,15 +9,17 @@ import { REJECT_LABELS } from '../../../shared/guardrail'
 import { StatusDot, statusLabel } from './StatusDot'
 import { useCaptureQueue } from './useCaptureQueue'
 import { useIntakeJobs, type IntakeJob, type JobStatus } from './useIntakeJobs'
-import { cancelJob, requestIdentify } from './uploader'
+import { cancelJob } from './uploader'
 import { availabilityText } from './availability'
 
 const thumbUrl = (jobId: string) => supabase.storage.from('thumbnails').getPublicUrl(`${jobId}.jpg`).data.publicUrl
 
 export function QueueScreen() {
-  const { batchId, pending, errors, dismissed, newBatch, dismiss, discard } = useCaptureQueue()
+  const { batchId, pending, errors, dismissed, newBatch, dismiss, discard, identify, identifyErrors, identifying } = useCaptureQueue()
   const { data: allJobs = [], isLoading, error } = useIntakeJobs(batchId)
   const jobs = allJobs.filter((j) => !dismissed.includes(j.id))
+  const activity = usePointActivity(jobs.filter(j => !!j.items).map(j => j.id))
+  const receipts = new Map(activity.data?.map(entry => [entry.job_id, entry]))
   const finished = jobs.filter((j) => j.status === 'green' || j.status === 'rejected')
   const queryClient = useQueryClient()
 
@@ -25,7 +30,7 @@ export function QueueScreen() {
 
   async function retry(job: IntakeJob) {
     setRetryError(null)
-    await requestIdentify(job.id).catch((e: Error) => setRetryError(e.message))
+    await identify(job.id).catch((e: Error) => setRetryError(e.message))
     void queryClient.invalidateQueries({ queryKey: ['intake-jobs', batchId] })
   }
 
@@ -52,8 +57,10 @@ export function QueueScreen() {
         </div>
       </header>
 
+      <PointsHint />
+
       {error && <div role="alert" className="alert alert-error alert-soft">{error.message}</div>}
-      {retryError && <div role="alert" className="alert alert-error alert-soft">{retryError}</div>}
+      {retryError && !Object.values(identifyErrors).includes(retryError) && <div role="alert" className="alert alert-error alert-soft">{retryError}</div>}
       {isLoading && <span className="loading loading-spinner mx-auto" />}
       {!isLoading && !jobs.length && !pending.length && <p className="opacity-70">Nothing in this batch yet.</p>}
 
@@ -77,14 +84,16 @@ export function QueueScreen() {
             <div className="min-w-0 flex-1">
               <div className="truncate font-medium">{job.items?.name ?? job.identified?.name ?? statusLabel(job.status)}</div>
               <div className="truncate text-sm opacity-70">
-                {availabilityText(job.availability)}
+                {identifying.includes(job.id) ? 'Identifying…' : availabilityText(job.availability)}
                 {job.items && ` · ${job.items.categories.join(', ').replaceAll('_', ' ')}`}
                 {job.status === 'red' && job.error && ` · ${job.error}`}
                 {job.status === 'rejected' && job.reject_reason && ` · ${REJECT_LABELS[job.reject_reason]}`}
               </div>
+              <PointReceipt activity={receipts.get(job.id)} />
+              {job.status !== 'green' && job.status !== 'rejected' && identifyErrors[job.id] && <p role="alert" className="mt-1 break-words text-xs text-error">{identifyErrors[job.id]}</p>}
             </div>
             {(job.status === 'queued' || job.status === 'red' || job.status === 'waiting_quota') && (
-              <button className="btn btn-xs" onClick={() => retry(job)}>Retry</button>
+              <button className="btn btn-xs" disabled={identifying.includes(job.id)} onClick={() => retry(job)}>{identifying.includes(job.id) ? 'Identifying…' : 'Retry'}</button>
             )}
             {(job.status === 'yellow' || job.status === 'queued' || job.status === 'red' || job.status === 'waiting_quota') && (
               <Link to="/review/$jobId" params={{ jobId: job.id }} className="btn btn-xs btn-outline">

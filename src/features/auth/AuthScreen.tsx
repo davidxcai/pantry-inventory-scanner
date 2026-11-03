@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { supabase } from '../../lib/supabase'
-import { UTA_EMAIL_MESSAGE, isUtaEmail } from '../../../shared/email'
+import { canRegisterAccount, isDesignatedVisitApproverEmail, REGISTRATION_EMAIL_MESSAGE } from '../../../shared/visitApprover'
 
 type Mode = 'signin' | 'register' | 'forgot'
 
@@ -47,8 +47,8 @@ export function AuthScreen() {
     setNotice(null)
     setUnconfirmed(false)
 
-    if (mode === 'register' && !isUtaEmail(email)) {
-      setError(UTA_EMAIL_MESSAGE)
+    if (mode === 'register' && !canRegisterAccount(email)) {
+      setError(REGISTRATION_EMAIL_MESSAGE)
       return
     }
 
@@ -63,12 +63,12 @@ export function AuthScreen() {
       if (error) setError(error.message)
       else setNotice('If an account exists for that email, a reset link is on its way. Check your junk folder too.')
     } else if (mode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({ email: trimmed, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email: trimmed, password })
       if (error?.code === 'email_not_confirmed') {
         setUnconfirmed(true)
         setError('Confirm your email first. Open the link we sent you when you registered.')
       } else if (error) setError(error.message)
-      else await navigate({ href: redirect ?? '/' })
+      else await navigate({ href: redirect ?? (isDesignatedVisitApproverEmail(data.user?.email) ? '/visit-review' : '/') })
     } else {
       const { data, error } = await supabase.auth.signUp({
         email: trimmed,
@@ -88,7 +88,7 @@ export function AuthScreen() {
       // email. It returns a placeholder user with no identities instead.
       else if (data.user && data.user.identities?.length === 0)
         setError('An account with this email already exists. Sign in, or use "Forgot password" if you need to reset it.')
-      else if (data.session) await navigate({ href: redirect ?? '/' })
+      else if (data.session) await navigate({ href: redirect ?? (isDesignatedVisitApproverEmail(data.session.user.email) ? '/visit-review' : '/') })
       else setNotice('Check your email (and junk folder) for a confirmation link, then sign in.')
     }
     setBusy(false)
@@ -104,6 +104,8 @@ export function AuthScreen() {
           Register
         </button>
       </div>
+
+      <p className="text-sm opacity-70">Students use a UTA email. The designated visit approver may use their approved Gmail account.</p>
 
       <form onSubmit={submit} className="flex flex-col gap-3">
         {mode === 'register' && (
@@ -138,7 +140,7 @@ export function AuthScreen() {
           </>
         )}
         <label className="flex flex-col gap-1">
-          <span className="text-sm">UTA email</span>
+          <span className="text-sm">Email</span>
           <input
             type="email"
             required
