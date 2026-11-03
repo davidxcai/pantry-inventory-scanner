@@ -1,3 +1,5 @@
+import { PointReceipt } from '../points/PointReceipt'
+import { usePointActivity } from '../points/usePointActivity'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { supabase } from '../../lib/supabase'
@@ -17,6 +19,7 @@ const thumbUrl = (path: string | null) => (path ? supabase.storage.from('thumbna
 export function ReviewScreen({ jobId }: { jobId: string }) {
   const navigate = useNavigate()
   const { job, catalog, photoUrl, useExisting, createNew, confirmItem } = useReviewJob(jobId)
+  const activity = usePointActivity([jobId])
   const j = job.data
 
   const [name, setName] = useState('')
@@ -64,6 +67,7 @@ export function ReviewScreen({ jobId }: { jobId: string }) {
           <StatusDot status={j.status} /> {j.items?.name ?? 'Saved'}
         </h1>
         <p className="text-sm opacity-70">Marked {availabilityText(j.availability)}.</p>
+        <PointReceipt activity={activity.data?.[0]} />
         <Link to="/queue" className="btn btn-primary">Back to queue</Link>
       </main>
     )
@@ -116,6 +120,7 @@ export function ReviewScreen({ jobId }: { jobId: string }) {
         </section>
       )}
 
+      <PointReceipt activity={activity.data?.[0]} />
       {failure && <div role="alert" className="alert alert-error alert-soft">{failure.message}</div>}
 
       {hasItem ? (

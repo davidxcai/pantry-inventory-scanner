@@ -1,3 +1,6 @@
+import { recordDeviceStock } from '../points/devicePoints'
+import { refreshPoints } from '../points/refreshPoints'
+import { uuid } from '../../lib/uuid'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { CatalogRow, PublicAvailability } from '../../../shared/catalogView'
@@ -32,8 +35,10 @@ export function useSetStatus() {
     mutationFn: async ({ itemId, status }: { itemId: string; status: PublicAvailability }) => {
       const { error } = await supabase.rpc('set_item_status', { p_item_id: itemId, p_status: status })
       if (error) throw error
+      await recordDeviceStock([itemId], `report:${uuid()}`)
     },
     onSuccess: () => {
+      void refreshPoints(queryClient)
       queryClient.invalidateQueries({ queryKey: KEY })
       queryClient.invalidateQueries({ queryKey: HISTORY_KEY })
       queryClient.invalidateQueries({ queryKey: ['personal-watchlist'] })

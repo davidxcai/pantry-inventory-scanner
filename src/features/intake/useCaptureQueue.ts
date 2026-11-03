@@ -36,6 +36,9 @@ type State = {
   dismissed: string[] // finished jobs the user cleared from the queue view
   pending: PendingCapture[]
   last: PendingCapture | null // for the "same as last" shortcut
+  identifyErrors: Record<string, string>
+  identifying: string[]
+  identify: (id: string) => Promise<void>
   errors: Record<string, string> // why a capture is still waiting, by capture id
   // The phone refused to store photos (Safari Private Browsing does this), so waiting captures
   // live only in this tab and are lost if it closes before they upload.
@@ -55,6 +58,8 @@ export const useCaptureQueue = create<State>((set, get) => ({
   last: null,
   errors: {},
   memoryOnly: false,
+  identifyErrors: {},
+  identifying: [],
   dismissed: readDismissed(),
 
   async enqueue(photo, thumb, availability) {
@@ -102,6 +107,23 @@ export const useCaptureQueue = create<State>((set, get) => ({
     })
   },
 
+  async identify(id) {
+    if (get().identifying.includes(id)) return
+    set((state) => {
+      const { [id]: _old, ...identifyErrors } = state.identifyErrors
+      return { identifying: [...state.identifying, id], identifyErrors }
+    })
+    try {
+      await requestIdentify(id)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not identify this photo. Please retry.'
+      set((state) => ({ identifyErrors: { ...state.identifyErrors, [id]: message } }))
+      throw error
+    } finally {
+      set((state) => ({ identifying: state.identifying.filter((active) => active !== id) }))
+    }
+  },
+
   async flush() {
     if (flushing) return
     flushing = true
@@ -120,7 +142,7 @@ export const useCaptureQueue = create<State>((set, get) => ({
           const { [capture.id]: _done, ...errors } = s.errors
           return { pending: s.pending.filter((p) => p.id !== capture.id), errors }
         })
-        void requestIdentify(capture.id).catch(() => {})
+        void get().identify(capture.id).catch(() => {})
       }
     } finally {
       flushing = false

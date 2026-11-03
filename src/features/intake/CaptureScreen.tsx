@@ -1,3 +1,4 @@
+import { PointsHint } from '../points/PointsHint'
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { IconRepeat } from '@tabler/icons-react'
@@ -60,6 +61,8 @@ export function CaptureScreen() {
           {pending.length > 0 && <span className="badge badge-warning">{pending.length} uploading</span>}
         </Link>
       </header>
+
+      <PointsHint />
 
       {error && <div role="alert" className="alert alert-error alert-soft">{error}</div>}
       {memoryOnly && pending.length > 0 && (

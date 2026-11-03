@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import {
   IconBell,
   IconBookmark,
+  IconStar,
   IconCalendarEvent,
   IconInfoCircle,
   IconListDetails,
@@ -12,6 +13,7 @@ import {
   IconUser,
   IconX,
 } from '@tabler/icons-react'
+import { isDesignatedVisitApproverEmail } from '../../../shared/visitApprover'
 import { supabase } from '../../lib/supabase'
 import { useWatches } from '../catalog/useWatches'
 import { displayNameOf, useSession } from './useSession'
@@ -21,8 +23,9 @@ const BOOK_URL = 'https://app.pantrysoft.com/login/maverickpantry'
 
 export function Navbar() {
   const session = useSession()
+  const reviewer = isDesignatedVisitApproverEmail(session?.user.email)
   const [open, setOpen] = useState(false)
-  const { data: watches } = useWatches(!!session)
+  const { data: watches } = useWatches(!!session && !reviewer)
   const changed = watches?.filter((w) => w.changed).length ?? 0
   const changedBadge = changed > 0 && <span className="badge badge-info badge-sm">{changed}</span>
   const close = () => setOpen(false)
@@ -64,9 +67,13 @@ export function Navbar() {
                 <IconUser size={18} /> {displayNameOf(session)}
               </button>
               <ul tabIndex={0} className="menu dropdown-content z-10 mt-2 w-44 rounded-box bg-base-100 p-2 shadow">
+                {reviewer && <li><Link to="/visit-review"><IconCalendarEvent size={18} /> Review visit requests</Link></li>}
+                {!reviewer && <li><Link to="/points"><IconStar size={18} /> Points</Link></li>}
+                {!reviewer && <>
                 <li><Link to="/profile"><IconBookmark size={18} /> Saved products</Link></li>
                 <li><Link to="/watching"><IconBell size={18} /> Watching {changedBadge}</Link></li>
                 <li><Link to="/queue"><IconListDetails size={18} /> My scans</Link></li>
+                </>}
                 <li>
                   <button onClick={() => void supabase.auth.signOut()}>
                     <IconLogout size={18} /> Sign out
@@ -108,15 +115,16 @@ export function Navbar() {
                 <IconCalendarEvent size={22} /> Book Appointment
               </a>
             </li>
-            {session && <li><Link to="/profile" onClick={close}><IconBookmark size={22} /> Saved products</Link></li>}
-            {session && (
+            {session && <li><Link to={reviewer ? "/visit-review" : "/points"} onClick={close}><IconStar size={22} /> {reviewer ? "Review visit requests" : "Points"}</Link></li>}
+            {session && !reviewer && <li><Link to="/profile" onClick={close}><IconBookmark size={22} /> Saved products</Link></li>}
+            {session && !reviewer && (
               <li>
                 <Link to="/watching" onClick={close}>
                   <IconBell size={22} /> Watching {changedBadge}
                 </Link>
               </li>
             )}
-            {session && (
+            {session && !reviewer && (
               <li>
                 <Link to="/queue" onClick={close}>
                   <IconListDetails size={22} /> My scans

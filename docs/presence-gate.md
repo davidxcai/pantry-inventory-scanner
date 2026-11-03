@@ -16,6 +16,8 @@ Hours are the first gate and check-in the second. Both are evaluated on every wr
 Location services were rejected as the gate: permission prompts, poor indoor accuracy and easy spoofing. The QR code is a stronger signal and needs no permission.
 
 ## Check-in rules
+
+With `20261102030000_extra_visit_rewards.sql` applied, approved 100-point rewards permit additional single-use check-ins without changing the regular monthly allowance. Extra check-ins also satisfy the inventory presence gate. See [extra-visit rewards](extra-visit-rewards.md) for the extended policy and setup. The rules below describe the original monthly allowance.
 `check_in(p_code)` is the only way to create a row in `pantry_checkins`.
 
 - **Login required.** The check-in belongs to the account, never the device, so a dead phone or a second phone does not matter. The `/checkin` screen sends signed-out visitors to `/login` and returns them to the scan afterwards.

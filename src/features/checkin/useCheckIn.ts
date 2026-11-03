@@ -1,10 +1,12 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 
-// Records this month's visit and returns when it started. Idempotent inside its 30-minute window.
-// The database refuses it when the pantry is closed, too close to closing, or already used this month.
+// Uses the monthly allowance first, then a single approved extra visit.
+// Repeated scans inside the active 30-minute session do not consume another visit.
 export function useCheckIn() {
+  const client = useQueryClient()
   return useMutation({
+    onSuccess: () => { void client.invalidateQueries({ queryKey: ['inventory-points'] }) },
     mutationFn: async (code: string): Promise<Date> => {
       const { data, error } = await supabase.rpc('check_in', { p_code: code })
       if (error) throw error

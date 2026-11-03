@@ -1,3 +1,4 @@
+import { requestPhotoAnalysis } from '../../lib/photoApi'
 import { supabase } from '../../lib/supabase'
 import type { PendingCapture } from './queueDb'
 
@@ -6,7 +7,7 @@ import type { PendingCapture } from './queueDb'
 export async function uploadCapture(c: PendingCapture): Promise<void> {
   const { data: sessionData } = await supabase.auth.getSession()
   const session = sessionData.session
-  if (!session) throw new Error('signed out')
+  if (!session) throw new Error('Sign in again to upload your saved photo.')
 
   // Photos live under the user's id; storage rules only let a user reach their own folder.
   const photoPath = `${session.user.id}/${c.batchId}/${c.id}.jpg`
@@ -15,8 +16,8 @@ export async function uploadCapture(c: PendingCapture): Promise<void> {
     supabase.storage.from('intake-photos').upload(photoPath, c.photo, opts),
     supabase.storage.from('thumbnails').upload(`${c.id}.jpg`, c.thumb, opts),
   ])
-  if (photo.error) throw photo.error
-  if (thumb.error) throw thumb.error
+  if (photo.error) throw new Error(`Could not upload the photo: ${photo.error.message}`)
+  if (thumb.error) throw new Error(`Could not upload the preview: ${thumb.error.message}`)
 
   const { error } = await supabase.from('intake_jobs').insert({
     id: c.id,
@@ -25,7 +26,7 @@ export async function uploadCapture(c: PendingCapture): Promise<void> {
     availability: c.availability ?? 'in_stock',
     created_by: session.user.id,
   })
-  if (error && error.code !== '23505') throw error
+  if (error && error.code !== '23505') throw new Error(`Could not save the upload: ${error.message}`)
 }
 
 // Cancel a job that never produced an item. The server refuses jobs that are already done, and an
@@ -35,21 +36,5 @@ export async function cancelJob(jobId: string): Promise<void> {
   if (error) throw error
 }
 
-// Ask the server to identify a job. The result arrives through Realtime, so failures here only
-// mean the job stays "queued" until someone retries it from the queue screen.
-export async function requestIdentify(jobId: string): Promise<void> {
-  const { data } = await supabase.auth.getSession()
-  const res = await fetch('/api/identify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token}` },
-    body: JSON.stringify({ jobId }),
-  })
-  // A dev server without the API answers with the app's HTML; that is not a success.
-  if (!(res.headers.get('content-type') ?? '').includes('application/json')) {
-    throw new Error(`identify API not reachable (got ${res.status} ${res.headers.get('content-type') ?? 'no content type'}). Is the server running with "vercel dev"?`)
-  }
-  if (!res.ok && res.status !== 409) {
-    const body = (await res.json().catch(() => null)) as { error?: string } | null
-    throw new Error(`identify failed (${res.status})${body?.error ? `: ${body.error}` : ''}`)
-  }
-}
+// The queue records failures so they stay visible and retryable after leaving Add item.
+export const requestIdentify = (jobId: string) => requestPhotoAnalysis('identify', jobId)

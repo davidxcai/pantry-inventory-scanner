@@ -1,3 +1,6 @@
+import { recordDeviceStock } from '../points/devicePoints'
+import { refreshPoints } from '../points/refreshPoints'
+import { requestPhotoAnalysis } from '../../lib/photoApi'
 import { uuid } from '../../lib/uuid'
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -38,15 +41,7 @@ export async function submitShelfScan(photo: Blob): Promise<string> {
 }
 
 // A failure here only leaves the scan "queued"; the banner on the catalog offers a retry.
-export async function requestShelfScan(scanId: string): Promise<void> {
-  const { data } = await supabase.auth.getSession()
-  const res = await fetch('/api/shelf', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token}` },
-    body: JSON.stringify({ scanId }),
-  })
-  if (!res.ok && res.status !== 409) throw new Error(`shelf scan failed (${res.status})`)
-}
+export const requestShelfScan = (scanId: string) => requestPhotoAnalysis('shelf', scanId)
 
 // Re-fetch when the server changes a scan. Row-level security limits events to the user's own.
 function useShelfRealtime(onChange: () => void, enabled = true) {
@@ -112,7 +107,7 @@ export function useShelfPhotoUrl(photoPath: string | undefined) {
   })
 }
 
-export type ConfirmResult = { updated: number; skipped: { item_id: string; reason: string }[] }
+export type ConfirmResult = { updated: number; skipped: { item_id: string; reason: string }[]; devicePoints?: number }
 
 export function useConfirmShelfScan(scanId: string) {
   const queryClient = useQueryClient()
@@ -120,9 +115,13 @@ export function useConfirmShelfScan(scanId: string) {
     mutationFn: async (itemIds: string[]): Promise<ConfirmResult> => {
       const { data, error } = await supabase.rpc('confirm_shelf_scan', { p_scan_id: scanId, p_item_ids: itemIds })
       if (error) throw error
-      return data as ConfirmResult
+      const result = data as ConfirmResult
+      const savedIds = itemIds.filter(id => !result.skipped.some(entry => entry.item_id === id))
+      const feedback = await recordDeviceStock(savedIds, `scan:${scanId}`)
+      return { ...result, ...(feedback ? { devicePoints: feedback.filter(entry => entry.outcome === 'earned').length } : {}) }
     },
     onSuccess: () => {
+      void refreshPoints(queryClient)
       void queryClient.invalidateQueries({ queryKey: ['public-catalog'] })
       void queryClient.invalidateQueries({ queryKey: ['shelf-scans'] })
       void queryClient.invalidateQueries({ queryKey: ['shelf-scan', scanId] })

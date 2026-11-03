@@ -1,4 +1,5 @@
-// Registration is limited to UTA addresses. The database repeats this check (is_uta_email).
+// Student access is limited to UTA addresses. The designated reviewer registration
+// exception is defined separately in visitApprover.ts and the database migration.
 
 const ALLOWED_DOMAINS = ["uta.edu", "mavs.uta.edu"];
 
