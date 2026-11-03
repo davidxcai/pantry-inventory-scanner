@@ -7,7 +7,7 @@ import type { CatalogRow, PublicAvailability } from '../../../shared/catalogView
 import { HISTORY_KEY } from './useItemHistory'
 
 const KEY = ['public-catalog']
-export const CATALOG_COLUMNS = 'id, name, category, thumbnail_path, availability, updated_at, updated_by_name, pending, reported_by_me'
+export const CATALOG_COLUMNS = 'id, name, category, thumbnail_path, availability, updated_at, updated_by_name'
 
 export const thumbUrl = (path: string | null) =>
   path ? supabase.storage.from('thumbnails').getPublicUrl(path).data.publicUrl : undefined

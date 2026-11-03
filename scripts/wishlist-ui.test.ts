@@ -15,7 +15,7 @@ import {ProfileScreen} from '../src/features/profile/ProfileScreen'
 import {Navbar} from '../src/features/auth/Navbar'
 import {WatchlistButton} from '../src/features/watchlist/WatchlistButton'
 import {AvailabilityWishlistButton} from '../src/features/watchlist/AvailabilityWishlistButton'
-const rice:CatalogRow={id:'rice',name:'Rice',category:'snacks',thumbnail_path:null,availability:'out',updated_at:null,updated_by_name:null,pending:false,reported_by_me:false}
+const rice:CatalogRow={id:'rice',name:'Rice',category:'snacks',thumbnail_path:null,availability:'out',updated_at:null,updated_by_name:null}
 beforeEach(()=>{
  mock.saved.mockReturnValue({data:[],deviceOnly:false,isPending:false,isSuccess:true,isFetching:false,refetch:vi.fn()})
  mock.wishlist.mockReturnValue({query:{data:{items:[],deviceOnly:false},isSuccess:true,isPending:false,refetch:vi.fn()},mutation:{isPending:false,mutate:vi.fn()}})

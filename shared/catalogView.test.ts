@@ -9,8 +9,6 @@ const row = (o: Partial<CatalogRow> & { name: string }): CatalogRow => ({
   availability: "in_stock",
   updated_at: null,
   updated_by_name: null,
-  pending: false,
-  reported_by_me: false,
   ...o,
 });
 

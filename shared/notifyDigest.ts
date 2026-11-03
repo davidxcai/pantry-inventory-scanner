@@ -10,7 +10,8 @@ export type QueuedNotification = {
   item_id: string;
   item_name: string;
   status: PublicAvailability;
-  // 'report' is a new status (pending until a second student agrees), 'confirm' is that agreement.
+  // Kept for older queued rows. Since single-student verification (20261102070000) every report
+  // is verified at once, so the email shows the status alone either way.
   kind: "report" | "confirm";
   created_at: string;
 };
@@ -50,8 +51,7 @@ export function groupDigests(rows: QueuedNotification[]): Digest[] {
 const STATUS_TEXT: Record<PublicAvailability, string> = { in_stock: "In stock", low: "Low", out: "Out of stock" };
 
 export function describeUpdate(item: DigestItem): string {
-  const status = STATUS_TEXT[item.status];
-  return item.kind === "confirm" ? `${status} (confirmed by a second student)` : `${status} (reported, waiting for a second student)`;
+  return STATUS_TEXT[item.status];
 }
 
 export function digestSubject(items: DigestItem[]): string {

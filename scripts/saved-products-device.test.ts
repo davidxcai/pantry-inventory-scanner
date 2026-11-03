@@ -16,7 +16,7 @@ let deployed = false
 let failure: { code: string; message: string } | null = null
 let rows: Map<string, { user_id: string; item_id: string; created_at: string }>
 let products: Map<string, CatalogRow>
-const beans: CatalogRow = { id: 'beans', name: 'Black beans', category: 'canned_jarred', thumbnail_path: null, availability: 'out', updated_at: null, updated_by_name: null, pending: false, reported_by_me: false }
+const beans: CatalogRow = { id: 'beans', name: 'Black beans', category: 'canned_jarred', thumbnail_path: null, availability: 'out', updated_at: null, updated_by_name: null }
 beforeEach(() => {
   vi.stubGlobal('localStorage', new DeviceStorage())
   deployed = false; failure = null; rows = new Map(); products = new Map([['beans', { ...beans }]])

@@ -57,6 +57,7 @@ beforeAll(async () => {
   await db.exec(definition(shelf, 'confirm_shelf_scan'))
   await db.exec(readFileSync('supabase/migrations/20261028000000_inventory_points.sql', 'utf8'))
   await db.exec(readFileSync('supabase/migrations/20261102050000_weekly_inventory_points.sql', 'utf8'))
+  await db.exec(readFileSync('supabase/migrations/20261102070000_single_student_verification.sql', 'utf8'))
 }, 30_000)
 beforeEach(async () => {
   await asAdmin()
@@ -128,18 +129,18 @@ it('recovers successful recent reports idempotently without rewarding duplicate-
   expect((await db.query('select * from inventory_point_activity')).rows).toHaveLength(2)
 })
 
-it('preserves two-student photo verification and never revives cancelled jobs', async () => {
+it('verifies a photo from one student and never revives cancelled jobs', async () => {
   await asAdmin()
   await db.exec(readFileSync('supabase/migrations/20261102000000_cancel_intake_job.sql','utf8'))
   const first = await job(); await db.query('select resolve_job_existing($1,$2)',[first,existing])
-  const repeat = await job(); await db.query('select resolve_job_existing($1,$2)',[repeat,existing])
-  expect((await db.query<{status_verified:boolean}>('select status_verified from items where id=$1',[existing])).rows[0].status_verified).toBe(false)
+  expect((await db.query<{status_verified:boolean;status_updated_by:string}>('select status_verified,status_updated_by from items where id=$1',[existing])).rows[0]).toMatchObject({status_verified:true,status_updated_by:alice})
   const other = (await db.query<{id:string}>("insert into intake_jobs(created_by) values($1) returning id",[bob])).rows[0].id
   await signIn(bob)
   await db.query('select resolve_job_existing($1,$2)',[other,existing])
   await signIn(); await asAdmin()
-  const after = await job(); await db.query('select resolve_job_existing($1,$2)',[after,existing])
-  expect((await db.query<{status_verified:boolean;status_updated_by:string}>('select status_verified,status_updated_by from items where id=$1',[existing])).rows[0]).toMatchObject({status_verified:true,status_updated_by:alice})
+  // A repeat photo of the same status keeps the original reporter but is still logged (for points).
+  expect((await db.query<{status_updated_by:string}>('select status_updated_by from items where id=$1',[existing])).rows[0].status_updated_by).toBe(alice)
+  expect((await db.query('select * from item_status_log where item_id=$1',[existing])).rows).toHaveLength(2)
   const cancelled = await job('cancelled')
   await expect(db.query('select resolve_job_existing($1,$2)',[cancelled,existing])).rejects.toThrow('job cancelled')
 })

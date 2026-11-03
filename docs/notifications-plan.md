@@ -11,7 +11,7 @@ A signed-in student can "watch" any catalog item, whatever its status (in stock,
 
 | Question | Decision |
 |---|---|
-| What counts as an update? | Every row written to `item_status_log`: a new report (pending), a second student's confirmation, a close-up photo (`apply_item_status`), a shelf scan. Re-reporting an already verified status writes nothing, so it notifies nobody. |
+| What counts as an update? | Every row written to `item_status_log`: a report, a close-up photo (`apply_item_status`), a shelf scan. (Before `20261102070000` a report stayed pending until a second student confirmed it.) Re-reporting the current status writes a `confirm` row (for points) but does not notify. |
 | Subscription lifetime | Persistent until the user turns it off. |
 | Delivery | **Batched**: one digest email per user every 10 minutes. Several updates to one item collapse to the latest. |
 | Self-notify | No. The student who made the update is never queued for it. |

@@ -4,7 +4,7 @@ import { filterSavedProducts, savedProductCounts, type SavedProduct } from './sa
 
 const saved = (id: string, name: string, availability: 'in_stock' | 'low' | 'out'): SavedProduct => ({
   item_id: id, created_at: '2026-10-26T12:00:00Z',
-  item: { id, name, availability, category: 'canned_jarred', thumbnail_path: null, updated_at: null, updated_by_name: null, pending: false, reported_by_me: false },
+  item: { id, name, availability, category: 'canned_jarred', thumbnail_path: null, updated_at: null, updated_by_name: null },
 })
 const entries: SavedProduct[] = [saved('a', 'Café beans', 'out'), saved('b', 'Black beans', 'in_stock'), saved('c', 'Soup', 'low'), { item_id: 'd', created_at: '', item: null }]
 

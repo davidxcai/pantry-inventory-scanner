@@ -6,7 +6,7 @@ import {setAvailabilityWishlist,loadAvailabilityWishlist} from '../src/features/
 import {readAvailabilityWishlist} from '../src/features/watchlist/availabilityWishlistStorage'
 import {setWatchlistItem} from '../src/features/watchlist/watchlistData'
 import {readDeviceSaves} from '../src/features/watchlist/watchlistStorage'
-const out:CatalogRow={id:'rice',name:'Rice',availability:'out',category:'snacks',thumbnail_path:null,pending:false,reported_by_me:false,updated_at:null,updated_by_name:null}
+const out:CatalogRow={id:'rice',name:'Rice',availability:'out',category:'snacks',thumbnail_path:null,updated_at:null,updated_by_name:null}
 beforeEach(()=>{
  vi.clearAllMocks()
  const data=new Map<string,string>()

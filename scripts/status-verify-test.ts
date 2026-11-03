@@ -1,6 +1,6 @@
-// Two-student verification test: pending/confirm/replace, the 10-minute cooldown and the 30-report cap.
+// Status update test: single-student reports, the 10-minute cooldown and the 30-a-day 'out' cap.
 // Needs SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY in .env and the
-// 20261015010000_status_verification migration applied. Run against a dev/staging project: it
+// 20261102070000_single_student_verification migration applied. Run against a dev/staging project: it
 // creates and deletes throwaway @mavs.uta.edu users and items.
 //
 //   npm run status-test
@@ -44,8 +44,8 @@ const stateOf = async (itemId: string) => {
   return data!;
 };
 // Pretend the cooldown has passed by moving this user's log rows into the past.
-const ageLog = (userId: string) =>
-  admin.from("item_status_log").update({ created_at: new Date(Date.now() - 60 * 60_000).toISOString() }).eq("user_id", userId).throwOnError();
+const ageLog = (userId: string, minutes = 60) =>
+  admin.from("item_status_log").update({ created_at: new Date(Date.now() - minutes * 60_000).toISOString() }).eq("user_id", userId).throwOnError();
 
 async function main() {
   const a = await makeStudent("a");
@@ -62,24 +62,19 @@ async function main() {
   try {
     const towels = await makeItem("Status Test Paper Towels");
 
-    // ----- report, confirm, replace -----
+    // ----- report, repeat, replace -----
     check("A reports out", !(await set(a, towels, "out")).error);
     let s = await stateOf(towels);
-    check("report is pending", s.status === "out" && !s.status_verified && s.status_updated_by === a.id, s);
+    check("one report is verified straight away", s.status === "out" && s.status_verified && s.status_updated_by === a.id, s);
     const view = await createClient(url, anonKey).from("available_items").select("pending").eq("id", towels).single();
-    check("public view marks it pending", view.data?.pending === true, view);
+    check("public view does not mark it pending", view.data?.pending === false, view);
 
-    const self = await set(a, towels, "out");
-    check("A cannot confirm own report", !!self.error, self);
+    check("A repeating the same status is allowed", !(await set(a, towels, "out")).error);
+    check("B re-checking the same status records B", !(await set(b, towels, "out")).error && (await stateOf(towels)).status_updated_by === b.id);
 
-    check("B confirms", !(await set(b, towels, "out")).error);
+    check("C changes it to in_stock", !(await set(c, towels, "in_stock")).error);
     s = await stateOf(towels);
-    check("confirmed by a second student", s.status === "out" && s.status_verified && s.status_updated_by === a.id, s);
-    check("third report of same status is a no-op", !(await set(c, towels, "out")).error && (await stateOf(towels)).status_verified);
-
-    check("C disputes with in_stock", !(await set(c, towels, "in_stock")).error);
-    s = await stateOf(towels);
-    check("dispute replaces it and is pending", s.status === "in_stock" && !s.status_verified && s.status_updated_by === c.id, s);
+    check("change replaces it and is verified", s.status === "in_stock" && s.status_verified && s.status_updated_by === c.id, s);
 
     // ----- cooldown -----
     const cool = await set(a, towels, "out");
@@ -89,23 +84,21 @@ async function main() {
 
     const fix = await makeItem("Status Test Fix");
     await set(b, fix, "out");
-    check("B can correct own pending report immediately", !(await set(b, fix, "low")).error && (await stateOf(fix)).status === "low");
+    check("B can correct own report immediately", !(await set(b, fix, "low")).error && (await stateOf(fix)).status === "low");
 
     // ----- photos (apply_item_status, as resolve_job_existing/new call it) -----
     const photo = (u: Student, itemId: string, status: string) =>
       admin.rpc("apply_item_status", { p_item_id: itemId, p_status: status, p_user: u.id });
     const shot = await makeItem("Status Test Photo");
     await photo(a, shot, "in_stock");
-    await photo(a, shot, "in_stock");
     s = await stateOf(shot);
-    check("own second photo stays pending and A's", !s.status_verified && s.status_updated_by === a.id, s);
+    check("a photo is verified straight away", s.status === "in_stock" && s.status_verified && s.status_updated_by === a.id, s);
     await photo(b, shot, "in_stock");
     s = await stateOf(shot);
-    check("B's photo confirms A's report", s.status_verified && s.status_updated_by === a.id, s);
+    check("a photo of the same status changes nothing", s.status_updated_by === a.id, s);
     await photo(b, shot, "low");
     s = await stateOf(shot);
-    check("photo with a new status is a pending report", s.status === "low" && !s.status_verified && s.status_updated_by === b.id, s);
-    check("A (who added the item) can confirm B's update", !(await set(a, shot, "low")).error && (await stateOf(shot)).status_verified);
+    check("a photo with a new status replaces it", s.status === "low" && s.status_verified && s.status_updated_by === b.id, s);
 
     // ----- cap -----
     const bulk: string[] = [];
@@ -117,16 +110,17 @@ async function main() {
       if (r.error) firstErr ??= r.error.message;
       else ok++;
     }
-    // C already has no pending 'out' (its towel report was in_stock), so the cap is the full 30.
-    check(`cap stops at ${CAP} unverified out reports`, ok === CAP && !!firstErr, { ok, firstErr });
+    // C has made no 'out' reports yet (its towel report was in_stock), so the cap is the full 30.
+    check(`cap stops at ${CAP} out reports in 24 hours`, ok === CAP && !!firstErr, { ok, firstErr });
     check("in_stock is not capped", !(await set(c, bulk[CAP], "in_stock")).error);
-    check("confirming one frees a slot", !(await set(a, bulk[0], "out")).error && !(await set(c, bulk[CAP], "out")).error);
+    await ageLog(c.id, 25 * 60);
+    check("old out reports no longer count", !(await set(c, bulk[CAP], "out")).error);
   } finally {
     await admin.from("items").delete().in("id", itemIds);
     for (const st of students) await admin.auth.admin.deleteUser(st.id);
   }
 
-  console.log(failures === 0 ? "\nAll status verification checks passed." : `\n${failures} check(s) FAILED.`);
+  console.log(failures === 0 ? "\nAll status update checks passed." : `\n${failures} check(s) FAILED.`);
   process.exit(failures === 0 ? 0 : 1);
 }
 

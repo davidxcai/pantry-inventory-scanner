@@ -29,7 +29,6 @@ export function ItemCard({ item, onOpen, userId, inWatchlist = false }: Props) {
           <h2 className="line-clamp-2 text-sm font-medium leading-tight">{item.name}</h2>
           <div className="flex flex-wrap items-center gap-1">
             <AvailabilityBadgeFor availability={item.availability} />
-            {item.pending && <span className="badge badge-outline badge-sm">Pending verification</span>}
           </div>
           <p className={`text-xs ${stale ? 'text-warning' : 'opacity-70'}`}>
             {item.updated_at

@@ -55,8 +55,8 @@ test("subject names a single item, counts several", () => {
     links,
   );
   assert.equal(two.subject, "2 wishlist products are available");
-  assert.match(two.text, /Beans: Low \(confirmed/);
-  assert.match(two.text, /Rice: In stock \(reported/);
+  assert.match(two.text, /Beans: Low\n/);
+  assert.match(two.text, /Rice: In stock\n/);
 });
 
 const links = { app: "https://x.test/", wishlist: "https://x.test/wishlist", unsubscribe: "https://x.test/u?t=1" };

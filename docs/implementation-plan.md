@@ -149,7 +149,7 @@ Put the matching decisions (`normalizeName`, `decideMatch`) in `shared/` as pure
 | Statuses drift from reality | Freshness stamp on every item; a regular visit to re-check shelves |
 | Single maintainer | Keep stack small, document setup, own accounts under a shared team email |
 
-- **Shelf scan: written, not yet applied or tested** (`20261016000000_shelf_scans.sql`, `api/shelf.ts`, `shared/shelfScan.ts`, `src/features/shelf/`). `confirm_shelf_scan` goes through `set_item_status`, so the two-student verification, cooldown and presence gate apply per item. Apply the migration, then try a real shelf photo; the prompt and box handling are untested against Gemini. Shelf uploads are not saved to the phone first (unlike single-item captures), so a dropped connection loses that photo.
+- **Shelf scan: written, not yet applied or tested** (`20261016000000_shelf_scans.sql`, `api/shelf.ts`, `shared/shelfScan.ts`, `src/features/shelf/`). `confirm_shelf_scan` goes through `set_item_status`, so the cooldown, out cap and presence gate apply per item (one student's report is verified immediately since `20261102070000`). Apply the migration, then try a real shelf photo; the prompt and box handling are untested against Gemini. Shelf uploads are not saved to the phone first (unlike single-item captures), so a dropped connection loses that photo.
 
 ## 8. Crowdsourcing model (proposed 2026-10-07)
 

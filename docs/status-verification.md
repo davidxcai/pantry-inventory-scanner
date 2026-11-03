@@ -1,5 +1,13 @@
 # Two-student status verification
 
+> **Superseded 2026-11-02** by `supabase/migrations/20261102070000_single_student_verification.sql`. One student's report is now verified immediately; nothing is pending. Two-student confirmation was too strict for the pantry's traffic and most reports stayed "Pending verification" indefinitely. What changed:
+> - Any report (button, close-up photo, shelf scan) sets `status_verified = true`. All existing pending items were marked verified. Repeating the current status records a re-check (refreshes who checked it, logs a `confirm` row so points still accrue, per `20261102050000`); the "you already reported this" error is gone.
+> - The 10-minute cooldown stays; the exception is now "you are the current reporter" (still lets you fix a mis-tap).
+> - The 30 `out` cap now counts `out` reports in `item_status_log` over the last **24 hours** (index `item_status_log_user`), since unverified reports no longer exist.
+> - `status_verified`, and the view's `pending` / `reported_by_me` columns, are kept for older clients but are always true / false / false. The UI no longer shows a pending badge or a confirm button, and wishlist emails show the status alone. `confirm` log rows (old confirmations and new re-checks) still show as "Confirmed" in the timeline.
+>
+> The rest of this page describes the original two-student design.
+
 Status: **implemented, migration not yet applied** (2026-10-15). Migration: `supabase/migrations/20261015000000_status_verification.sql`.
 
 ## Problem
