@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router'
+import { WatchlistButton } from '../watchlist/WatchlistButton'
 import { IconBell } from '@tabler/icons-react'
 import type { CatalogRow } from '../../../shared/catalogView'
 import { isStale, timeAgo } from '../../../shared/freshness'
@@ -6,17 +8,19 @@ import { thumbUrl } from './useCatalog'
 
 type Props = {
   item: CatalogRow
+  userId?: string
+  inWatchlist?: boolean
   watching?: boolean
   // Someone else updated it since the user last opened the watching list.
   changed?: boolean
   onOpen: () => void
 }
 
-export function ItemCard({ item, watching, changed, onOpen }: Props) {
+export function ItemCard({ item, watching, changed, onOpen, userId, inWatchlist = false }: Props) {
   const out = item.availability === 'out'
   const stale = isStale(item.updated_at)
   return (
-    <li>
+    <li className="card card-sm overflow-hidden bg-base-200">
       <button
         type="button"
         onClick={onOpen}
@@ -41,6 +45,10 @@ export function ItemCard({ item, watching, changed, onOpen }: Props) {
           </p>
         </div>
       </button>
+      <div className="mt-auto px-3 pb-3">
+        {userId ? <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} removeOnly={inWatchlist} />
+          : <Link to="/login" className="btn btn-sm btn-outline w-full">Sign in to save</Link>}
+      </div>
     </li>
   )
 }

@@ -79,11 +79,11 @@ export function CatalogScreen() {
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {shown.map((r) => (
-          <ItemCard key={r.id} item={r} watching={watchedIds.has(r.id)} onOpen={() => setOpenId(r.id)} />
+          <ItemCard key={r.id} item={r} userId={session?.user.id} watching={watchedIds.has(r.id)} onOpen={() => setOpenId(r.id)} />
         ))}
       </ul>
 
-      {openItem && <ItemDialog item={openItem} signedIn={!!session} onClose={() => setOpenId(null)} />}
+      {openItem && <ItemDialog item={openItem} userId={session?.user.id} onClose={() => setOpenId(null)} />}
     </main>
   )
 }

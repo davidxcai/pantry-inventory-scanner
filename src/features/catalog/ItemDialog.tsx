@@ -3,13 +3,14 @@ import { IconBell, IconBellOff, IconCheck } from '@tabler/icons-react'
 import type { CatalogRow, PublicAvailability } from '../../../shared/catalogView'
 import { isStale, timeAgo } from '../../../shared/freshness'
 import { AvailabilityBadgeFor, availabilityLabel } from './AvailabilityBadge'
+import { WatchlistButton } from '../watchlist/WatchlistButton'
 import { ItemHistory } from './ItemHistory'
 import { thumbUrl, useSetStatus } from './useCatalog'
 import { useToggleWatch, useWatches } from './useWatches'
 
 type Props = {
   item: CatalogRow
-  signedIn: boolean
+  userId?: string
   onClose: () => void
 }
 
@@ -27,7 +28,8 @@ const CONFIRM_CLS: Record<PublicAvailability, string> = {
 // Detail view for one item. Marking Low or Out needs no photo; saying an item is in stock does
 // (Add item / Update stock on the catalog). A pending report can be confirmed here by anyone but its
 // reporter: set_item_status treats the same status from a second student as a confirmation.
-export function ItemDialog({ item, signedIn, onClose }: Props) {
+export function ItemDialog({ item, userId, onClose }: Props) {
+  const signedIn = !!userId
   const setStatus = useSetStatus()
   const watches = useWatches(signedIn)
   const toggleWatch = useToggleWatch()
@@ -66,6 +68,8 @@ export function ItemDialog({ item, signedIn, onClose }: Props) {
         {toggleWatch.error && <div role="alert" className="alert alert-error alert-soft mt-3 text-sm">{toggleWatch.error.message}</div>}
 
         <div className="modal-action flex-col gap-2">
+          {signedIn && <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} />}
+          {!signedIn && <Link to="/login" className="btn btn-outline btn-block">Sign in to save this product</Link>}
           {canConfirm && (
             <button
               className={`btn btn-block ${CONFIRM_CLS[item.availability]}`}

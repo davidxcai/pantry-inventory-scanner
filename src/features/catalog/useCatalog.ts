@@ -4,6 +4,7 @@ import type { CatalogRow, PublicAvailability } from '../../../shared/catalogView
 import { HISTORY_KEY } from './useItemHistory'
 
 const KEY = ['public-catalog']
+export const CATALOG_COLUMNS = 'id, name, category, thumbnail_path, availability, updated_at, updated_by_name, pending, reported_by_me'
 
 export const thumbUrl = (path: string | null) =>
   path ? supabase.storage.from('thumbnails').getPublicUrl(path).data.publicUrl : undefined
@@ -15,7 +16,7 @@ export function useCatalog() {
     queryFn: async (): Promise<CatalogRow[]> => {
       const { data, error } = await supabase
         .from('available_items')
-        .select('id, name, category, thumbnail_path, availability, updated_at, updated_by_name, pending, reported_by_me')
+        .select(CATALOG_COLUMNS)
         .limit(5000)
       if (error) throw error
       return data as CatalogRow[]
@@ -35,6 +36,7 @@ export function useSetStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEY })
       queryClient.invalidateQueries({ queryKey: HISTORY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['personal-watchlist'] })
     },
   })
 }
