@@ -1,3 +1,5 @@
+> Superseded by [Wishlist inside Saved products](wishlist.md): Saved products remains unchanged, and only explicitly wishlisted out-of-stock saved items receive availability emails. The details below describe the earlier Watching implementation.
+
 # Stock update notifications
 
 Status: **built, migrations not yet applied** (2026-11-01). Planned 2026-10-14; the email provider changed from Gmail SMTP to Resend once the project got a domain.

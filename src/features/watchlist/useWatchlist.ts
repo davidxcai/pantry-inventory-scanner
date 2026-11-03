@@ -54,7 +54,7 @@ export function useSetWatchlistItem(userId: string | undefined, itemId: string, 
         return { ...current, items: context?.entry ? [...rest, context.entry].sort((a, b) => b.created_at.localeCompare(a.created_at)) : rest }
       })
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key(userId) }),
+    onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: key(userId) }),queryClient.invalidateQueries({queryKey:['availability-wishlist',userId]})]),
   })
   return { ...mutation, isPending: mutation.isPending || pending }
 }

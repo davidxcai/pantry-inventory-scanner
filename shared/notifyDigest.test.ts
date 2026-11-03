@@ -50,16 +50,16 @@ test("subject names a single item, counts several", () => {
   const two = renderDigest(
     [
       { itemId: "r", name: "Rice", status: "in_stock", kind: "report" },
-      { itemId: "b", name: "Beans", status: "out", kind: "confirm" },
+      { itemId: "b", name: "Beans", status: "low", kind: "confirm" },
     ],
     links,
   );
-  assert.equal(two.subject, "2 items you watch were updated");
-  assert.match(two.text, /Beans: Out of stock \(confirmed/);
+  assert.equal(two.subject, "2 wishlist products are available");
+  assert.match(two.text, /Beans: Low \(confirmed/);
   assert.match(two.text, /Rice: In stock \(reported/);
 });
 
-const links = { app: "https://x.test/", watching: "https://x.test/watching", unsubscribe: "https://x.test/u?t=1" };
+const links = { app: "https://x.test/", wishlist: "https://x.test/wishlist", unsubscribe: "https://x.test/u?t=1" };
 
 test("item names are escaped in html", () => {
   const { html } = renderDigest([{ itemId: "r", name: "<b>Rice</b> & Co", status: "low", kind: "report" }], links);
@@ -74,3 +74,10 @@ test("unsubscribe token round-trips and rejects tampering", async () => {
   assert.equal(await verifyUnsubscribeToken("s3cret", token.replace("user-1", "user-2")), null);
   assert.equal(await verifyUnsubscribeToken("s3cret", "garbage"), null);
 });
+
+test("availability digests exclude out-of-stock products and refuse an empty alert", () => {
+  const email=renderDigest([{itemId:'rice',name:'Rice',status:'in_stock',kind:'report'},{itemId:'beans',name:'Beans',status:'out',kind:'report'}],links)
+  assert.match(email.text,/Rice/)
+  assert.doesNotMatch(email.text,/Beans/)
+  assert.throws(()=>renderDigest([{itemId:'beans',name:'Beans',status:'out',kind:'report'}],links),/No available wishlist/)
+})

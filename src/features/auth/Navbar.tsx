@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
-  IconBell,
   IconBookmark,
   IconStar,
   IconCalendarEvent,
@@ -15,7 +14,6 @@ import {
 } from '@tabler/icons-react'
 import { isDesignatedVisitApproverEmail } from '../../../shared/visitApprover'
 import { supabase } from '../../lib/supabase'
-import { useWatches } from '../catalog/useWatches'
 import { displayNameOf, useSession } from './useSession'
 
 const INFO_URL = 'https://www.uta.edu/student-affairs/health-and-wellness/maverick-pantry'
@@ -25,9 +23,6 @@ export function Navbar() {
   const session = useSession()
   const reviewer = isDesignatedVisitApproverEmail(session?.user.email)
   const [open, setOpen] = useState(false)
-  const { data: watches } = useWatches(!!session && !reviewer)
-  const changed = watches?.filter((w) => w.changed).length ?? 0
-  const changedBadge = changed > 0 && <span className="badge badge-info badge-sm">{changed}</span>
   const close = () => setOpen(false)
 
   return (
@@ -71,7 +66,6 @@ export function Navbar() {
                 {!reviewer && <li><Link to="/points"><IconStar size={18} /> Points</Link></li>}
                 {!reviewer && <>
                 <li><Link to="/profile"><IconBookmark size={18} /> Saved products</Link></li>
-                <li><Link to="/watching"><IconBell size={18} /> Watching {changedBadge}</Link></li>
                 <li><Link to="/queue"><IconListDetails size={18} /> My scans</Link></li>
                 </>}
                 <li>
@@ -117,13 +111,7 @@ export function Navbar() {
             </li>
             {session && <li><Link to={reviewer ? "/visit-review" : "/points"} onClick={close}><IconStar size={22} /> {reviewer ? "Review visit requests" : "Points"}</Link></li>}
             {session && !reviewer && <li><Link to="/profile" onClick={close}><IconBookmark size={22} /> Saved products</Link></li>}
-            {session && !reviewer && (
-              <li>
-                <Link to="/watching" onClick={close}>
-                  <IconBell size={22} /> Watching {changedBadge}
-                </Link>
-              </li>
-            )}
+
             {session && !reviewer && (
               <li>
                 <Link to="/queue" onClick={close}>

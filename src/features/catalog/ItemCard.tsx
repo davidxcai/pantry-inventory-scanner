@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router'
 import { WatchlistButton } from '../watchlist/WatchlistButton'
-import { IconBell } from '@tabler/icons-react'
 import type { CatalogRow } from '../../../shared/catalogView'
 import { isStale, timeAgo } from '../../../shared/freshness'
 import { AvailabilityBadgeFor } from './AvailabilityBadge'
@@ -10,13 +9,10 @@ type Props = {
   item: CatalogRow
   userId?: string
   inWatchlist?: boolean
-  watching?: boolean
-  // Someone else updated it since the user last opened the watching list.
-  changed?: boolean
   onOpen: () => void
 }
 
-export function ItemCard({ item, watching, changed, onOpen, userId, inWatchlist = false }: Props) {
+export function ItemCard({ item, onOpen, userId, inWatchlist = false }: Props) {
   const out = item.availability === 'out'
   const stale = isStale(item.updated_at)
   return (
@@ -34,8 +30,6 @@ export function ItemCard({ item, watching, changed, onOpen, userId, inWatchlist 
           <div className="flex flex-wrap items-center gap-1">
             <AvailabilityBadgeFor availability={item.availability} />
             {item.pending && <span className="badge badge-outline badge-sm">Pending verification</span>}
-            {changed && <span className="badge badge-info badge-sm">Updated</span>}
-            {watching && <IconBell size={14} className="opacity-60" aria-label="Watching" />}
           </div>
           <p className={`text-xs ${stale ? 'text-warning' : 'opacity-70'}`}>
             {item.updated_at
