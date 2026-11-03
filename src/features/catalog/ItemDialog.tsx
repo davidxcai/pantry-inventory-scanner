@@ -1,17 +1,18 @@
 import { Link } from '@tanstack/react-router'
-import { IconBell, IconBellOff, IconCheck } from '@tabler/icons-react'
+import { IconCheck } from '@tabler/icons-react'
 import type { CatalogRow, PublicAvailability } from '../../../shared/catalogView'
 import { isStale, timeAgo } from '../../../shared/freshness'
 import { AvailabilityBadgeFor, availabilityLabel } from './AvailabilityBadge'
+import { AvailabilityWishlistButton } from '../watchlist/AvailabilityWishlistButton'
 import { WatchlistButton } from '../watchlist/WatchlistButton'
 import { ItemHistory } from './ItemHistory'
 import { thumbUrl, useSetStatus } from './useCatalog'
-import { useToggleWatch, useWatches } from './useWatches'
 
 type Props = {
   item: CatalogRow
   userId?: string
   onClose: () => void
+  allowWishlistRemoval?: boolean
 }
 
 const MARKS: { status: Exclude<PublicAvailability, 'in_stock'>; label: string; correction: string; cls: string }[] = [
@@ -28,12 +29,9 @@ const CONFIRM_CLS: Record<PublicAvailability, string> = {
 // Detail view for one item. Marking Low or Out needs no photo; saying an item is in stock does
 // (Add item / Update stock on the catalog). A pending report can be confirmed here by anyone but its
 // reporter: set_item_status treats the same status from a second student as a confirmation.
-export function ItemDialog({ item, userId, onClose }: Props) {
+export function ItemDialog({ item, userId, onClose, allowWishlistRemoval = false }: Props) {
   const signedIn = !!userId
   const setStatus = useSetStatus()
-  const watches = useWatches(signedIn)
-  const toggleWatch = useToggleWatch()
-  const watching = !!watches.data?.some((w) => w.item_id === item.id)
   const stale = isStale(item.updated_at)
   const canConfirm = signedIn && item.pending && !item.reported_by_me
   const label = availabilityLabel(item.availability).toLowerCase()
@@ -65,10 +63,10 @@ export function ItemDialog({ item, userId, onClose }: Props) {
           <p className="mt-2 text-xs opacity-70">You reported this. Waiting for another student to confirm.</p>
         )}
         {setStatus.error && <div role="alert" className="alert alert-error alert-soft mt-3 text-sm">{setStatus.error.message}</div>}
-        {toggleWatch.error && <div role="alert" className="alert alert-error alert-soft mt-3 text-sm">{toggleWatch.error.message}</div>}
 
         <div className="modal-action flex-col gap-2">
           {signedIn && <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} />}
+          {userId && <AvailabilityWishlistButton item={item} userId={userId} allowAvailableRemoval={allowWishlistRemoval}/>}
           {!signedIn && <Link to="/login" className="btn btn-outline btn-block">Sign in to save this product</Link>}
           {canConfirm && (
             <button
@@ -93,17 +91,6 @@ export function ItemDialog({ item, userId, onClose }: Props) {
                 </button>
               ))}
             </div>
-          )}
-          {signedIn ? (
-            <button
-              className={`btn btn-block ${watching ? 'btn-outline' : 'btn-primary btn-soft'}`}
-              disabled={toggleWatch.isPending || watches.isLoading}
-              onClick={() => toggleWatch.mutate({ itemId: item.id, watch: !watching })}
-            >
-              {watching ? <><IconBellOff size={18} /> Stop notifying me</> : <><IconBell size={18} /> Notify me when this changes</>}
-            </button>
-          ) : (
-            <Link to="/login" className="btn btn-block btn-ghost"><IconBell size={18} /> Sign in to get notified</Link>
           )}
           <button className="btn btn-block" onClick={onClose}>Close</button>
         </div>

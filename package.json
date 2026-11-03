@@ -21,7 +21,8 @@
     "lint:install": "npm --prefix tools/eslint install",
     "test:saved": "vitest run scripts/saved-products*.test.ts",
     "watchlist-test": "tsx scripts/watchlist-test.ts",
-    "test:points": "vitest run scripts/points-*.test.ts"
+    "test:points": "vitest run scripts/points-*.test.ts",
+    "test:wishlist": "vitest run scripts/wishlist-*.test.ts scripts/saved-products*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.27.0",

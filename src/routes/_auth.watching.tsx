@@ -1,4 +1,2 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { WatchingScreen } from '../features/catalog/WatchingScreen'
-
-export const Route = createFileRoute('/_auth/watching')({ component: WatchingScreen })
+import { createFileRoute,redirect } from '@tanstack/react-router'
+export const Route=createFileRoute('/_auth/watching')({beforeLoad:()=>{throw redirect({to:'/profile',search:{list:'wishlist'}})}})

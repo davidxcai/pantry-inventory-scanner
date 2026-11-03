@@ -1,3 +1,4 @@
+import { storeAvailabilityWishlist } from './availabilityWishlistStorage'
 import type { SavedProduct } from '../../../shared/savedProducts'
 import type { CatalogRow } from '../../../shared/catalogView'
 import { supabase } from '../../lib/supabase'
@@ -88,9 +89,11 @@ export function setWatchlistItem(userId: string, itemId: string, saved: boolean)
     if (result.error) {
       if (!missingTable(result.error)) throw result.error
       setDeviceSave(userId, itemId, saved)
+      if (!saved) storeAvailabilityWishlist(userId,itemId,false)
       return
     }
     // A successful account save/removal supersedes an unsynced device entry for this product.
     setDeviceSave(userId, itemId, false)
+    if (!saved) storeAvailabilityWishlist(userId,itemId,false)
   })
 }

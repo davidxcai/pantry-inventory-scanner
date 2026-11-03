@@ -19,17 +19,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return res.status(400).send(page("<p>This unsubscribe link is not valid.</p>"));
 
   if (req.method === "POST") {
-    const { error } = await admin.from("item_subscriptions").delete().eq("user_id", userId);
+    const { error } = await admin.rpc("stop_wishlist_emails", { p_user_id: userId });
     if (error) return res.status(500).send(page("<p>Something went wrong. Try again in a minute.</p>"));
     return res.status(200).send(
-      page(`<p>You will not get any more stock emails. You can watch items again any time in <a href="${APP_URL}">Thyme Saver</a>.</p>`),
+      page(`<p>Wishlist availability emails are paused. Your wishlist is still saved. You can turn email alerts back on in <a href="${APP_URL}/profile?list=wishlist">your Wishlist</a>.</p>`),
     );
   }
   if (req.method !== "GET") return res.status(405).send(page("<p>Method not allowed.</p>"));
 
   return res.status(200).send(
     page(
-      `<p>Stop all stock update emails from Thyme Saver? This removes every item you watch.</p>` +
+      `<p>Pause wishlist availability emails from Thyme Saver? Your wishlist items will stay saved.</p>` +
         `<form method="post"><button type="submit" style="padding:.5rem 1rem">Unsubscribe</button></form>`,
     ),
   );

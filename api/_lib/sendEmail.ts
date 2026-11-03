@@ -9,8 +9,10 @@ export type Email = { to: string; subject: string; text: string; html: string; u
 
 // 'limited' means the provider's rate or daily quota was hit; the caller should stop and retry later.
 export async function sendEmail(email: Email): Promise<"sent" | "limited"> {
+  if (!process.env.RESEND_API_KEY) throw new Error("Email provider is not configured");
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: FROM,

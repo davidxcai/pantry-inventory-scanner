@@ -10,7 +10,6 @@ import { ShelfScanBanner } from '../shelf/ShelfScanBanner'
 import { ItemDialog } from './ItemDialog'
 import { ItemCard } from './ItemCard'
 import { useCatalog } from './useCatalog'
-import { useWatches } from './useWatches'
 
 export function CatalogScreen() {
   const { data: rows = [], isLoading, error } = useCatalog()
@@ -19,8 +18,6 @@ export function CatalogScreen() {
   const [hideOut, setHideOut] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const session = useSession()
-  const watches = useWatches(!!session)
-  const watchedIds = useMemo(() => new Set(watches.data?.map((w) => w.item_id)), [watches.data])
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000)
@@ -79,7 +76,7 @@ export function CatalogScreen() {
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {shown.map((r) => (
-          <ItemCard key={r.id} item={r} userId={session?.user.id} watching={watchedIds.has(r.id)} onOpen={() => setOpenId(r.id)} />
+          <ItemCard key={r.id} item={r} userId={session?.user.id} onOpen={() => setOpenId(r.id)} />
         ))}
       </ul>
 

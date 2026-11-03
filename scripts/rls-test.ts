@@ -128,48 +128,34 @@ async function main() {
     const again = await alice.client.rpc("resolve_job_existing", { p_job_id: jobId, p_item_id: itemId });
     check("resolving twice is harmless and adds no item", !again.error && (await count()) === before, again);
 
-    // ----- watches and the notification queue -----
-    const aWatch = await guest.from("item_subscriptions").insert({ user_id: alice.id, item_id: itemId });
-    check("anon cannot watch an item", !!aWatch.error, aWatch);
-    const aQueue = await guest.from("notification_queue").select("id");
-    check("anon cannot read the notification queue", (aQueue.data ?? []).length === 0, aQueue);
-
-    const watch = await alice.client.from("item_subscriptions").insert({ user_id: alice.id, item_id: itemId });
-    check("user can watch an item", !watch.error, watch);
-    const bobWatch = await bob.client.from("item_subscriptions").insert({ user_id: bob.id, item_id: itemId });
-    check("a second user can watch the same item", !bobWatch.error, bobWatch);
-    const spoofWatch = await bob.client.from("item_subscriptions").insert({ user_id: alice.id, item_id: crypto.randomUUID() });
-    check("user cannot create a watch for someone else", !!spoofWatch.error, spoofWatch);
-    const bobSeesWatches = await bob.client.from("item_subscriptions").select("user_id");
-    check("user sees only their own watches", bobSeesWatches.data?.length === 1 && bobSeesWatches.data[0].user_id === bob.id, bobSeesWatches);
-    const seenWrite = await alice.client.from("item_subscriptions").update({ last_seen_at: "2000-01-01" }).eq("user_id", alice.id).select();
-    check("user cannot edit a watch directly", !seenWrite.data?.length, seenWrite);
-
-    // A status update by bob (written straight to the log, so the pantry-hours gate does not apply).
-    await admin.from("item_status_log").insert({ item_id: itemId, status: "low", user_id: bob.id }).throwOnError();
-    const queued = await admin.from("notification_queue").select("user_id, status, kind").eq("item_id", itemId);
-    check(
-      "an update queues the watcher but not the student who made it",
-      queued.data?.length === 1 && queued.data[0].user_id === alice.id && queued.data[0].status === "low",
-      queued,
-    );
-    const uQueue = await alice.client.from("notification_queue").select("id");
-    check("user cannot read the notification queue", (uQueue.data ?? []).length === 0, uQueue);
-    const uClaim = await alice.client.rpc("claim_notifications", { p_users: 10 });
-    check("claim_notifications is not callable by users", !!uClaim.error, uClaim);
-
-    const mine = await alice.client.rpc("my_watches");
-    check("my_watches flags an item someone else updated", mine.data?.length === 1 && mine.data[0].changed === true, mine);
-    const bobMine = await bob.client.rpc("my_watches");
-    check("my_watches does not flag your own update", bobMine.data?.length === 1 && bobMine.data[0].changed === false, bobMine);
-    const seen = await alice.client.rpc("mark_watches_seen");
-    const afterSeen = await alice.client.rpc("my_watches");
-    check("mark_watches_seen clears the flag", !seen.error && afterSeen.data?.[0]?.changed === false, afterSeen);
-
-    const bobDeletesAlice = await bob.client.from("item_subscriptions").delete().eq("user_id", alice.id).select();
-    check("user cannot delete someone else's watch", !bobDeletesAlice.data?.length, bobDeletesAlice);
-    const unwatch = await alice.client.from("item_subscriptions").delete().eq("item_id", itemId).eq("user_id", alice.id).select();
-    check("user can stop watching", unwatch.data?.length === 1, unwatch);
+    // ----- unified wishlist and availability notifications -----
+    const anonymousSave = await guest.from('watchlist_items').insert({user_id:alice.id,item_id:itemId})
+    check('anon cannot add a wishlist item',!!anonymousSave.error,anonymousSave)
+    const saved = await alice.client.from('watchlist_items').insert({user_id:alice.id,item_id:itemId})
+    check('user can add to wishlist',!saved.error,saved)
+    const other = await bob.client.from('watchlist_items').insert({user_id:bob.id,item_id:itemId})
+    check('accounts have independent wishlists',!other.error,other)
+    const wishlistSpoof = await bob.client.from('watchlist_items').insert({user_id:alice.id,item_id:crypto.randomUUID()})
+    check('user cannot add to another wishlist',!!wishlistSpoof.error,wishlistSpoof)
+    const rows = await bob.client.from('watchlist_items').select('user_id')
+    check('user sees only their wishlist',rows.data?.length===1&&rows.data[0].user_id===bob.id,rows)
+    await admin.from('items').update({status:'out'}).eq('id',itemId).throwOnError()
+    await alice.client.rpc('set_wishlist_item',{p_item_id:itemId,p_enabled:true}).throwOnError()
+    await bob.client.rpc('set_wishlist_item',{p_item_id:itemId,p_enabled:true}).throwOnError()
+    await admin.from('items').update({status:'in_stock'}).eq('id',itemId).throwOnError()
+    const queued = await admin.from('notification_queue').select('user_id,status').eq('item_id',itemId).eq('type','wishlist_available').is('sent_at',null)
+    check('availability queues both wishlist accounts',queued.data?.length===2,queued)
+    const privateQueue = await alice.client.from('notification_queue').select('id')
+    check('user cannot read notification queue',!privateQueue.data?.length,privateQueue)
+    const claim = await alice.client.rpc('claim_notifications',{p_users:10})
+    check('users cannot run sender claims',!!claim.error,claim)
+    const pause = await alice.client.rpc('set_wishlist_email_enabled',{p_enabled:false})
+    const settings = await alice.client.rpc('get_wishlist_email_settings')
+    check('user can pause their emails',!pause.error&&settings.data?.enabled===false,settings)
+    const kept = await alice.client.from('watchlist_items').select('item_id')
+    check('pausing email preserves wishlist',kept.data?.length===1,kept)
+    const crossDelete = await bob.client.from('watchlist_items').delete().eq('user_id',alice.id).select()
+    check('user cannot delete another wishlist',!crossDelete.data?.length,crossDelete)
   } finally {
     await admin.from("intake_jobs").delete().eq("id", jobId);
     await admin.from("items").delete().eq("id", itemId);

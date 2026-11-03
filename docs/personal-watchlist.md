@@ -22,3 +22,7 @@ No new environment variables or runtime dependencies are required. The applicati
 - Sign into another account and confirm the first account’s saved products are absent. Signed-out visitors can browse the catalog, are offered a sign-in link in product details, and cannot save products or open the saved list.
 - With the table missing, save an item, reload Saved products and check it remains; apply the migration and refresh to verify the device entry syncs without duplication.
 - Check the empty-list state, out-of-stock and pending items, loading failures/retry, and removal of an item hidden after it was saved.
+
+## Optional Wishlist inside Saved products
+
+Saved products remains the main list. Open an out-of-stock saved product’s photo card to find **Add to wishlist** in its popup for an availability email. Saving alone never subscribes a product. The Wishlist tab inside Saved products contains only explicit opt-ins; removing from Wishlist keeps the save, while unsaving removes both. See [Wishlist behavior and setup](wishlist.md).

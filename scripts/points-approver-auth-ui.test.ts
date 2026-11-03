@@ -1,7 +1,6 @@
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, expect, it, vi } from 'vitest'
-vi.mock('../src/features/catalog/useWatches', () => ({ useWatches: () => ({data:[]}) }))
 const mock = vi.hoisted(() => ({ session: vi.fn() }))
 vi.mock('../src/lib/supabase', () => ({ supabase: {} }))
 vi.mock('../src/features/auth/useSession', () => ({ useSession: mock.session, displayNameOf: () => 'Reviewer' }))

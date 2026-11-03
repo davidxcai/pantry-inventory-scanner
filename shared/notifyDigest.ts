@@ -5,6 +5,7 @@ import type { PublicAvailability } from "./catalogView";
 
 export type QueuedNotification = {
   id: number;
+  claim_token?: string;
   user_id: string;
   item_id: string;
   item_name: string;
@@ -18,6 +19,7 @@ export type DigestItem = { itemId: string; name: string; status: PublicAvailabil
 
 export type Digest = {
   userId: string;
+  claimToken?: string;
   // Every queue row the digest covers, including ones collapsed away.
   rowIds: number[];
   items: DigestItem[];
@@ -25,10 +27,10 @@ export type Digest = {
 
 // One digest per user. Several updates to the same item collapse to the latest. Items are sorted by name.
 export function groupDigests(rows: QueuedNotification[]): Digest[] {
-  const byUser = new Map<string, { rowIds: number[]; latest: Map<string, QueuedNotification> }>();
+  const byUser = new Map<string, { claimToken?: string; rowIds: number[]; latest: Map<string, QueuedNotification> }>();
   for (const r of rows) {
     let d = byUser.get(r.user_id);
-    if (!d) byUser.set(r.user_id, (d = { rowIds: [], latest: new Map() }));
+    if (!d) byUser.set(r.user_id, (d = { claimToken: r.claim_token, rowIds: [], latest: new Map() }));
     d.rowIds.push(r.id);
     const prev = d.latest.get(r.item_id);
     if (!prev || r.created_at > prev.created_at || (r.created_at === prev.created_at && r.id > prev.id)) {
@@ -37,6 +39,7 @@ export function groupDigests(rows: QueuedNotification[]): Digest[] {
   }
   return [...byUser].map(([userId, d]) => ({
     userId,
+    claimToken: d.claimToken,
     rowIds: d.rowIds,
     items: [...d.latest.values()]
       .map((r) => ({ itemId: r.item_id, name: r.item_name, status: r.status, kind: r.kind }))
@@ -53,7 +56,7 @@ export function describeUpdate(item: DigestItem): string {
 
 export function digestSubject(items: DigestItem[]): string {
   if (items.length === 1) return `${items[0].name}: ${STATUS_TEXT[items[0].status].toLowerCase()}`;
-  return `${items.length} items you watch were updated`;
+  return `${items.length} wishlist products are available`;
 }
 
 const escapeHtml = (s: string) =>
@@ -61,15 +64,17 @@ const escapeHtml = (s: string) =>
 
 export const FOOTER = "Thyme Saver is a student-run project and is not affiliated with UTA.";
 
-export function renderDigest(items: DigestItem[], links: { app: string; watching: string; unsubscribe: string }) {
+export function renderDigest(items: DigestItem[], links: { app: string; wishlist: string; unsubscribe: string }) {
+  items = items.filter(item => item.status === 'in_stock' || item.status === 'low');
+  if (!items.length) throw new Error('No available wishlist products to notify');
   const lines = items.map((i) => `- ${i.name}: ${describeUpdate(i)}`);
   const text = [
-    "Items you watch on Thyme Saver were updated:",
+    "Products on your Thyme Saver wishlist are available:",
     "",
     ...lines,
     "",
     `See the pantry: ${links.app}`,
-    `Manage what you watch: ${links.watching}`,
+    `View your wishlist: ${links.wishlist}`,
     `Stop all of these emails: ${links.unsubscribe}`,
     "",
     FOOTER,
@@ -79,10 +84,10 @@ export function renderDigest(items: DigestItem[], links: { app: string; watching
     .map((i) => `<li><strong>${escapeHtml(i.name)}</strong>: ${escapeHtml(describeUpdate(i))}</li>`)
     .join("");
   const html =
-    `<p>Items you watch on Thyme Saver were updated:</p><ul>${rows}</ul>` +
+    `<p>Products on your Thyme Saver wishlist are available:</p><ul>${rows}</ul>` +
     `<p><a href="${escapeHtml(links.app)}">See the pantry</a></p>` +
     `<p style="font-size:12px;color:#666">` +
-    `<a href="${escapeHtml(links.watching)}">Manage what you watch</a> · ` +
+    `<a href="${escapeHtml(links.wishlist)}">View your wishlist</a> · ` +
     `<a href="${escapeHtml(links.unsubscribe)}">Stop all of these emails</a><br>${escapeHtml(FOOTER)}</p>`;
 
   return { subject: digestSubject(items), text, html };
