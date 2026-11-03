@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   IconBell,
+  IconBookmark,
   IconCalendarEvent,
   IconInfoCircle,
   IconListDetails,
@@ -63,6 +64,7 @@ export function Navbar() {
                 <IconUser size={18} /> {displayNameOf(session)}
               </button>
               <ul tabIndex={0} className="menu dropdown-content z-10 mt-2 w-44 rounded-box bg-base-100 p-2 shadow">
+                <li><Link to="/profile"><IconBookmark size={18} /> Saved products</Link></li>
                 <li><Link to="/watching"><IconBell size={18} /> Watching {changedBadge}</Link></li>
                 <li><Link to="/queue"><IconListDetails size={18} /> My scans</Link></li>
                 <li>
@@ -106,6 +108,7 @@ export function Navbar() {
                 <IconCalendarEvent size={22} /> Book Appointment
               </a>
             </li>
+            {session && <li><Link to="/profile" onClick={close}><IconBookmark size={22} /> Saved products</Link></li>}
             {session && (
               <li>
                 <Link to="/watching" onClick={close}>

@@ -54,11 +54,11 @@ export function WatchingScreen() {
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {items.map((r) => (
-          <ItemCard key={r.id} item={r} watching changed={changedOnArrival?.has(r.id)} onOpen={() => setOpenId(r.id)} />
+          <ItemCard key={r.id} item={r} userId={session?.user.id} watching changed={changedOnArrival?.has(r.id)} onOpen={() => setOpenId(r.id)} />
         ))}
       </ul>
 
-      {openItem && <ItemDialog item={openItem} signedIn={!!session} onClose={() => setOpenId(null)} />}
+      {openItem && <ItemDialog item={openItem} userId={session?.user.id} onClose={() => setOpenId(null)} />}
     </main>
   )
 }
