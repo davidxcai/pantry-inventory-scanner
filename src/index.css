@@ -118,8 +118,8 @@ body {
 }
 
 .pantry-page > .pantry-catalog {
-  background: linear-gradient(100deg, #fffaf4 0%, #fff3e5 55%, #f8e5d2 100%);
-  border-color: #fff5e8;
+  background: #ffffff;
+  border-color: #ffffff;
 }
 
 .pantry-product-card {
