@@ -32,7 +32,7 @@ export function CatalogScreen() {
     <main className="pantry-catalog mx-auto flex max-w-3xl flex-col gap-3 p-4">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Maverick Pantry</h1>
+          <h1 className="text-2xl font-semibold">Thyme Saver Maverick Pantry</h1>
           <p className="text-sm">
             {status.open
               ? <><span className="font-semibold text-success">Open</span> - {status.detail}</>
