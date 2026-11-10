@@ -29,10 +29,10 @@ export function CatalogScreen() {
   const shown = useMemo(() => filterCatalog(rows, { search, category, hideOut }), [rows, search, category, hideOut])
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-3 p-4">
+    <main className="pantry-catalog mx-auto flex max-w-3xl flex-col gap-3 p-4">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">UTA Pantry</h1>
+          <h1 className="text-2xl font-semibold">Maverick Pantry</h1>
           <p className="text-sm">
             {status.open
               ? <><span className="font-semibold text-success">Open</span> - {status.detail}</>

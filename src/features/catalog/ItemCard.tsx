@@ -16,11 +16,11 @@ export function ItemCard({ item, onOpen, userId, inWatchlist = false }: Props) {
   const out = item.availability === 'out'
   const stale = isStale(item.updated_at)
   return (
-    <li className="card card-sm overflow-hidden bg-base-200">
+    <li className="pantry-product-card card card-sm overflow-hidden bg-base-100">
       <button
         type="button"
         onClick={onOpen}
-        className={`card card-sm w-full overflow-hidden bg-base-200 text-left ${out ? 'opacity-60' : ''}`}
+        className={`card card-sm w-full overflow-hidden bg-transparent text-left ${out ? 'opacity-60' : ''}`}
       >
         <figure className="aspect-square bg-base-300">
           {item.thumbnail_path && <img src={thumbUrl(item.thumbnail_path)} alt="" loading="lazy" className="size-full object-cover" />}

@@ -36,14 +36,17 @@ export function Navbar() {
       />
 
       <div className="drawer-content">
-        <nav className="navbar border-b border-base-300 bg-base-100 px-4">
-          <Link to="/" className="flex-1 text-lg font-semibold">Thyme Saver</Link>
+        <nav aria-label="Main navigation" className="navbar pantry-navbar gap-2 px-4 py-3">
+          <Link to="/" className="pantry-brand flex-1">
+            <span className="pantry-brand-name">Maverick Pantry</span>
+            <span className="pantry-brand-university">The University of Texas at Arlington</span>
+          </Link>
 
           <div className="hidden sm:flex">
             <a href={INFO_URL} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm mr-2">
               Info
             </a>
-            <a href={BOOK_URL} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm mr-2">
+            <a href={BOOK_URL} target="_blank" rel="noopener noreferrer" className="btn pantry-nav-action btn-sm mr-2">
               Book Appointment
             </a>
           </div>
@@ -61,7 +64,7 @@ export function Navbar() {
               <button tabIndex={0} className="btn btn-ghost btn-sm">
                 <IconUser size={18} /> {displayNameOf(session)}
               </button>
-              <ul tabIndex={0} className="menu dropdown-content z-10 mt-2 w-44 rounded-box bg-base-100 p-2 shadow">
+              <ul tabIndex={0} className="menu dropdown-content z-10 mt-2 w-44 rounded-box bg-base-100 p-2 text-base-content shadow">
                 {reviewer && <li><Link to="/visit-review"><IconCalendarEvent size={18} /> Review visit requests</Link></li>}
                 {!reviewer && <li><Link to="/points"><IconStar size={18} /> Points</Link></li>}
                 {!reviewer && <>
@@ -76,7 +79,7 @@ export function Navbar() {
               </ul>
             </div>
           ) : (
-            <Link to="/login" className="btn btn-primary btn-sm hidden sm:inline-flex">Sign in</Link>
+            <Link to="/login" className="btn btn-outline btn-sm hidden sm:inline-flex">Sign in</Link>
           )}
         </nav>
       </div>
@@ -84,8 +87,11 @@ export function Navbar() {
       <div className="drawer-side z-50 sm:hidden">
         <label htmlFor="nav-drawer" aria-label="Close menu" className="drawer-overlay" />
         <div className="flex min-h-full w-4/5 max-w-xs flex-col bg-base-100">
-          <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
-            <span className="text-lg font-semibold">Thyme Saver</span>
+          <div className="pantry-drawer-heading flex items-center justify-between gap-2 px-4 py-3">
+            <div className="pantry-brand">
+              <span className="pantry-brand-name">Maverick Pantry</span>
+              <span className="pantry-brand-university">The University of Texas at Arlington</span>
+            </div>
             <button className="btn btn-ghost btn-square" onClick={close} aria-label="Close menu">
               <IconX size={26} />
             </button>
