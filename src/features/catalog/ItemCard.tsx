@@ -15,7 +15,7 @@ export function ItemCard({ item, onOpen, userId, inWatchlist = false }: Props) {
   const out = item.availability === 'out'
   const stale = isStale(item.updated_at)
   return (
-    <li className="pantry-product-card card card-sm overflow-hidden bg-base-100">
+    <li className="pantry-product-card card card-sm min-w-0 overflow-hidden bg-base-100">
       <button
         type="button"
         onClick={onOpen}
@@ -25,7 +25,7 @@ export function ItemCard({ item, onOpen, userId, inWatchlist = false }: Props) {
           {item.thumbnail_path && <img src={thumbUrl(item.thumbnail_path)} alt="" loading="lazy" className="size-full object-cover" />}
         </figure>
         <div className="card-body gap-1">
-          <h2 className="line-clamp-2 text-sm font-medium leading-tight">{item.name}</h2>
+          <h2 className="line-clamp-2 text-sm font-medium leading-tight wrap-anywhere">{item.name}</h2>
           <div className="flex flex-wrap items-center gap-1">
             <AvailabilityBadgeFor availability={item.availability} />
           </div>
