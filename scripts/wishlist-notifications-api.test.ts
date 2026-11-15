@@ -1,8 +1,8 @@
 import {beforeEach,afterEach,it,expect,vi} from 'vitest'
 import type {VercelRequest,VercelResponse} from '@vercel/node'
-const mock=vi.hoisted(()=>({rpc:vi.fn(),from:vi.fn(),getUserById:vi.fn(),send:vi.fn()}))
-vi.mock('../api/_lib/clients',()=>({admin:{rpc:mock.rpc,from:mock.from,auth:{admin:{getUserById:mock.getUserById}}}}))
-vi.mock('../api/_lib/sendEmail',()=>({APP_URL:'https://pantry.test',sendEmail:mock.send}))
+const mock=vi.hoisted(()=>({rpc:vi.fn(),from:vi.fn(),getUserById:vi.fn(),send:vi.fn(),config:vi.fn()}))
+vi.mock('../api/_lib/admin',()=>({admin:{rpc:mock.rpc,from:mock.from,auth:{admin:{getUserById:mock.getUserById}}}}))
+vi.mock('../api/_lib/sendEmail',()=>({APP_URL:'https://pantry.test',sendEmail:mock.send,wishlistMailConfig:mock.config}))
 import notify from '../api/notify'
 import unsubscribe from '../api/unsubscribe'
 import {unsubscribeToken} from '../shared/notifyDigest'
@@ -18,6 +18,7 @@ beforeEach(()=>{
  mock.rpc.mockImplementation(async(name:string)=>({data:name==='claim_notifications'?[queued]:null,error:null}))
  mock.getUserById.mockResolvedValue({data:{user:{email:'current-login@mavs.uta.edu',email_confirmed_at:'2026-11-02T00:00:00Z'}},error:null})
  mock.send.mockResolvedValue('sent')
+ mock.config.mockImplementation(()=>({provider:'resend'}))
  mock.from.mockImplementation((table:string)=>({select:()=>{
    const builder={limit:async()=>({data:[],error:null}),eq:()=>builder,maybeSingle:async()=>({data:{enabled},error:null}),in:async()=>({data:table==='wishlist_items'?(saved?[{item_id:'rice'}]:[]):(available?[{id:'rice',name:'Rice',availability:'in_stock',pending:true}]:[]),error:null})}
    return builder
@@ -81,6 +82,15 @@ it('refuses the legacy queue before claiming any rows when the migration is abse
  mock.from.mockReturnValue({select:()=>({limit:async()=>({data:null,error:{code:'42703'}})})})
  const res=response();await notify(request(),res as unknown as VercelResponse)
  expect(res.status).toHaveBeenCalledWith(503)
+ expect(mock.rpc).not.toHaveBeenCalled()
+ expect(mock.send).not.toHaveBeenCalled()
+})
+
+it('leaves the queue untouched when mail credentials are not configured',async()=>{
+ mock.config.mockImplementation(()=>{throw new Error('Missing provider')})
+ const res=response();await notify(request(),res as unknown as VercelResponse)
+ expect(res.status).toHaveBeenCalledWith(503)
+ expect(mock.from).not.toHaveBeenCalled()
  expect(mock.rpc).not.toHaveBeenCalled()
  expect(mock.send).not.toHaveBeenCalled()
 })

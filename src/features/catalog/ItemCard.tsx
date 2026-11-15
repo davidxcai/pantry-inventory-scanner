@@ -1,4 +1,5 @@
 import { WatchlistButton } from '../watchlist/WatchlistButton'
+import { AvailabilityWishlistButton } from '../watchlist/AvailabilityWishlistButton'
 import type { CatalogRow } from '../../../shared/catalogView'
 import { isStale, timeAgo } from '../../../shared/freshness'
 import { AvailabilityBadgeFor } from './AvailabilityBadge'
@@ -39,7 +40,9 @@ export function ItemCard({ item, onOpen, userId, inWatchlist = false }: Props) {
       </button>
       {userId && (
         <div className="mt-auto px-3 pb-3">
-          <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} removeOnly={inWatchlist} />
+          {out && !inWatchlist
+            ? <AvailabilityWishlistButton item={item} userId={userId} compact />
+            : <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} removeOnly={inWatchlist} />}
         </div>
       )}
     </li>

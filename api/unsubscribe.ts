@@ -1,10 +1,10 @@
-// Unsubscribe link from notification emails: removes every watch the user has.
+// Unsubscribe link pauses availability emails while preserving wishlist products.
 // GET only shows a confirm button, because mail scanners (Microsoft Safe Links on UTA mail) open
 // links in emails and would otherwise unsubscribe people. POST does the work, and is also what
 // mail clients send for the one-click List-Unsubscribe header.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { admin } from "./_lib/clients.js";
+import { admin } from "./_lib/admin.js";
 import { APP_URL } from "./_lib/sendEmail.js";
 import { verifyUnsubscribeToken } from "../shared/notifyDigest.js";
 

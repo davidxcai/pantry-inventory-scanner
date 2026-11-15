@@ -1,7 +1,7 @@
 // Availability digests for Wishlist. Scheduled by the existing protected notification cron.
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { admin } from './_lib/clients.js'
-import { APP_URL, sendEmail } from './_lib/sendEmail.js'
+import { admin } from './_lib/admin.js'
+import { APP_URL, sendEmail, wishlistMailConfig } from './_lib/sendEmail.js'
 import { groupDigests, renderDigest, unsubscribeToken, type QueuedNotification } from '../shared/notifyDigest.js'
 export const config = { maxDuration: 60 }
 const USERS_PER_RUN = 25
@@ -9,6 +9,9 @@ const USERS_PER_RUN = 25
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!['GET','POST'].includes(req.method || '')) return res.status(405).json({error:'GET or POST only'})
   if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({error:'unauthorized'})
+  try { wishlistMailConfig() } catch {
+    return res.status(503).json({error:'Configure APP_URL and either Resend or SMTP credentials before sending wishlist alerts. Pending mail remains queued.'})
+  }
   const schema = await admin.from('notification_queue').select('claim_token').limit(0)
   if (schema.error) return res.status(503).json({error:'Apply the wishlist notification migration before running this sender'})
   const {data,error} = await admin.rpc('claim_notifications',{p_users:USERS_PER_RUN})
@@ -22,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if(!digest.claimToken) return res.status(503).json({error:'Apply the wishlist notification migration before running this sender'})
     let delivered=false
     try {
-      if(limited || Date.now()-started>40_000) {outcomes.limited++;continue}
+      if(limited || Date.now()-started>30_000) {outcomes.limited++;continue}
       const {data:account,error:accountError}=await admin.auth.admin.getUserById(digest.userId)
       // Recipient comes only from the account used for login, never from a request body or profile.
       if(accountError || !account.user?.email || !account.user.email_confirmed_at) throw new Error('Verified login email unavailable')

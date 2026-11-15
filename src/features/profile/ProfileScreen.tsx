@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { IconBookmark, IconRefresh, IconSearch, IconChevronDown } from '@tabler/icons-react'
+import { IconBookmark, IconRefresh, IconSearch } from '@tabler/icons-react'
 import { filterSavedProducts, savedProductCounts, type SavedAvailability } from '../../../shared/savedProducts'
 import { displayNameOf, useSession } from '../auth/useSession'
 import { ItemCard } from '../catalog/ItemCard'
@@ -60,11 +60,17 @@ export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' |
           <label className="flex items-center justify-between gap-3 rounded-box bg-base-200 p-3 text-sm">
             <span>Email me when my wishlist products become available</span>
             <input type="checkbox" className="toggle toggle-primary" checked={emails.query.data?.enabled ?? false}
-              aria-describedby="wishlist-email-info" aria-busy={emails.mutation.isPending}
+              aria-describedby={emails.query.data?.ready || emails.query.isPending ? 'wishlist-email-info' : undefined} aria-busy={emails.mutation.isPending}
               disabled={!emails.query.data?.ready || emails.mutation.isPending || emails.query.isError}
               onChange={event=>emails.mutation.mutate(event.target.checked)}/>
           </label>
+          {(emails.query.data?.ready || emails.query.isPending) && <div id="wishlist-email-info" className="text-sm" role="status">
+            {emails.query.data?.ready
+              ? <p>{emails.query.data.enabled ? `Alerts go to ${session.user.email}, your login email.` : `Email alerts are paused. Turn the toggle on to receive availability emails at ${session.user.email}.`}</p>
+              : <p>Loading email preferences…</p>}
+          </div>}
           {(emails.query.error||emails.mutation.error||wishlist.query.error) && <p role="alert" className="text-error text-sm">{(emails.query.error||emails.mutation.error||wishlist.query.error)?.message}</p>}
+          {emails.query.isError && <button type="button" className="btn btn-sm btn-outline self-start" onClick={()=>void emails.query.refetch()}>Retry email preferences</button>}
         </div>}
         {tab === 'wishlist' && wishlist.query.isPending && <p role="status">Loading wishlist…</p>}
 
@@ -132,26 +138,6 @@ export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' |
           </ul>
         )}
       </section>
-
-      <details className="group rounded-box border border-base-300">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-box p-4 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
-          About saved products and email alerts
-          <IconChevronDown size={18} className="shrink-0 transition-transform group-open:rotate-180" aria-hidden="true"/>
-        </summary>
-        <div className="flex flex-col gap-3 border-t border-base-300 p-4 text-sm">
-          <p>Save products in the catalog to keep them here. Open an out-of-stock product’s photo card on the homepage or here, then choose Add to wishlist in its popup to get an availability email. Adding to Wishlist saves the product too. Saving a product alone does not subscribe you to emails.</p>
-          <p>Wishlist tracks the out-of-stock saved products you choose. Removing a wishlist choice keeps the product saved. Turn the email toggle off to pause alerts without deleting either list.</p>
-          <div id="wishlist-email-info">
-            {emails.query.data?.ready
-              ? <p>{emails.query.data.enabled ? `Alerts go to ${session.user.email}, your login email.` : `Email alerts are paused. Turn the toggle on to receive availability emails at ${session.user.email}.`}</p>
-              : emails.query.isPending ? <p>Loading email preferences…</p>
-                : !emails.query.error && <p>Email alerts need server setup. You can still organize your wishlist on this device.</p>}
-          </div>
-          {watchlist.deviceOnly && entries.length > 0 && <p>Your saves are stored on this device and waiting to sync to your account. Keep using this browser to find them here.</p>}
-          {wishlist.query.data?.deviceOnly && <p>Some wishlist choices are saved on this device. Email alerts start after account sync.</p>}
-          {watchlist.dataUpdatedAt > 0 && <p className="text-xs opacity-60">Last refreshed {new Date(watchlist.dataUpdatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}. Products show the latest student reports; check each item’s update time.</p>}
-        </div>
-      </details>
 
       {openItem && <ItemDialog item={openItem} userId={session.user.id} onClose={() => setOpenId(null)} allowWishlistRemoval={tab==='wishlist'} />}
     </main>

@@ -22,7 +22,8 @@
     "test:saved": "vitest run scripts/saved-products*.test.ts",
     "watchlist-test": "tsx scripts/watchlist-test.ts",
     "test:points": "vitest run scripts/points-*.test.ts",
-    "test:wishlist": "vitest run scripts/wishlist-*.test.ts scripts/saved-products*.test.ts"
+    "test:wishlist": "vitest run scripts/wishlist-*.test.ts scripts/saved-products*.test.ts",
+    "check:wishlist-emails": "node --import tsx scripts/check-wishlist-emails.ts"
   },
   "dependencies": {
     "@google/genai": "^2.27.0",

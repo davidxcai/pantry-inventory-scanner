@@ -47,7 +47,7 @@ export function ItemDialog({ item, userId, onClose, allowWishlistRemoval = false
         {setStatus.error && <div role="alert" className="alert alert-error alert-soft mt-3 text-sm">{setStatus.error.message}</div>}
 
         <div className="modal-action flex-col gap-2">
-          {signedIn && <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} />}
+          {signedIn && item.availability !== 'out' && <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} />}
           {userId && <AvailabilityWishlistButton item={item} userId={userId} allowAvailableRemoval={allowWishlistRemoval}/>}
           {signedIn && (
             <div className="join w-full">
