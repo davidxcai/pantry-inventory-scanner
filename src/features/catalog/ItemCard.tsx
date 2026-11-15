@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import { WatchlistButton } from '../watchlist/WatchlistButton'
 import type { CatalogRow } from '../../../shared/catalogView'
 import { isStale, timeAgo } from '../../../shared/freshness'
@@ -38,10 +37,11 @@ export function ItemCard({ item, onOpen, userId, inWatchlist = false }: Props) {
           </p>
         </div>
       </button>
-      <div className="mt-auto px-3 pb-3">
-        {userId ? <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} removeOnly={inWatchlist} />
-          : <Link to="/login" className="btn btn-sm btn-outline w-full">Sign in to save</Link>}
-      </div>
+      {userId && (
+        <div className="mt-auto px-3 pb-3">
+          <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} removeOnly={inWatchlist} />
+        </div>
+      )}
     </li>
   )
 }

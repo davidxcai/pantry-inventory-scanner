@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import type { CatalogRow, PublicAvailability } from '../../../shared/catalogView'
 import { isStale, timeAgo } from '../../../shared/freshness'
 import { AvailabilityBadgeFor } from './AvailabilityBadge'
@@ -50,7 +49,6 @@ export function ItemDialog({ item, userId, onClose, allowWishlistRemoval = false
         <div className="modal-action flex-col gap-2">
           {signedIn && <WatchlistButton itemId={item.id} name={item.name} userId={userId} item={item} />}
           {userId && <AvailabilityWishlistButton item={item} userId={userId} allowAvailableRemoval={allowWishlistRemoval}/>}
-          {!signedIn && <Link to="/login" className="btn btn-outline btn-block">Sign in to save this product</Link>}
           {signedIn && (
             <div className="join w-full">
               {MARKS.filter((m) => m.status !== item.availability).map((m) => (

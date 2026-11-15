@@ -37,6 +37,13 @@ export function CatalogScreen() {
             {status.open
               ? <><span className="font-semibold text-success">Open</span> - {status.detail}</>
               : <><span className="font-semibold text-error">Closed</span> - {status.detail}</>}
+            {' | '}
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=520%20S.%20Center%20St.%2C%20Arlington%2C%20TX%2076010"
+              className="link"
+            >
+              Map
+            </a>
           </p>
         </div>
       </header>
