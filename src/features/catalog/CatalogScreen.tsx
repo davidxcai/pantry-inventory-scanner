@@ -39,7 +39,7 @@ export function CatalogScreen() {
               : <><span className="font-semibold text-error">Closed</span> - {status.detail}</>}
             {' | '}
             <a
-              href="https://www.google.com/maps/search/?api=1&query=520%20S.%20Center%20St.%2C%20Arlington%2C%20TX%2076010"
+              href="https://www.google.com/maps/search/?api=1&query=UTA%20Maverick%20Pantry%2C%20520%20S%20Center%20St%2C%20Arlington%2C%20TX%2076010"
               className="link text-blue-600"
             >
               Map
