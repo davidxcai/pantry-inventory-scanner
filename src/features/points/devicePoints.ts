@@ -1,4 +1,4 @@
-import { isPantryEmail } from '../../../shared/email'
+import { isUtaEmail } from '../../../shared/email'
 import { POINT_COOLDOWN_MS, type PointReport } from '../../../shared/deviceInventoryPoints'
 import { PointsSummarySchema } from '../../../shared/inventoryPoints'
 import { supabase } from '../../lib/supabase'
@@ -31,7 +31,7 @@ export async function loadPoints(userId: string) {
   if (!error) return PointsSummarySchema.parse(data)
   if (!missingPointsBackend(error)) throw error
   const session = await supabase.auth.getSession()
-  if (session.error || session.data.session?.user.id !== userId || !isPantryEmail(session.data.session.user.email ?? '')) throw new Error('Sign in with your UTA or Gmail account to earn points.')
+  if (session.error || session.data.session?.user.id !== userId || !isUtaEmail(session.data.session.user.email ?? '')) throw new Error('Sign in with your UTA account to earn points.')
   let warning: string | null = null
   try { await reconcileDeviceJobs(userId) } catch { warning = 'Could not check recent uploads. Your saved device balance is shown; refresh to retry.' }
   const entries = await readDevicePoints(userId)
@@ -44,7 +44,7 @@ export async function loadPoints(userId: string) {
 export async function recordDeviceJob(jobId: string) {
   try {
     const { data: session } = await supabase.auth.getSession()
-    if (!session.session || !isPantryEmail(session.session.user.email ?? '')) return
+    if (!session.session || !isUtaEmail(session.session.user.email ?? '')) return
     const { error } = await supabase.rpc('get_inventory_points')
     if (!missingPointsBackend(error)) return
     const result = await supabase.from('intake_jobs').select('id,item_id,created_at,status,items(name,brand)')
@@ -56,7 +56,7 @@ export async function recordDeviceJob(jobId: string) {
 export async function recordDeviceStock(itemIds: string[], source: string) {
   try {
     const { data: session } = await supabase.auth.getSession()
-    if (!session.session || !isPantryEmail(session.session.user.email ?? '')) return null
+    if (!session.session || !isUtaEmail(session.session.user.email ?? '')) return null
     const { error } = await supabase.rpc('get_inventory_points')
     if (!missingPointsBackend(error)) return null
     const { data, error: itemError } = await supabase.from('items').select('id,name,brand').in('id',[...new Set(itemIds)])

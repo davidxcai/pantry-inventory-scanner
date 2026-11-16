@@ -24,9 +24,8 @@ it('keeps normal student navigation', () => {
   expect(html).toContain('href="/queue"')
   expect(html).not.toContain('href="/visit-review"')
 })
-it('offers Google login and supports UTA and Gmail accounts', () => {
+it('labels login as Email and explains the designated Gmail exception', () => {
   const html = renderToStaticMarkup(createElement(AuthScreen))
   expect(html).toContain('>Email</span>')
-  expect(html).toContain('UTA email or Gmail account')
-  expect(html).toContain('Continue with Google')
+  expect(html).toContain('approved Gmail account')
 })

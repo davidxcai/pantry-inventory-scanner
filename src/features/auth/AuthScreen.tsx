@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
-import { IconBrandGoogle } from '@tabler/icons-react'
 import { supabase } from '../../lib/supabase'
 import { canRegisterAccount, isDesignatedVisitApproverEmail, REGISTRATION_EMAIL_MESSAGE } from '../../../shared/visitApprover'
-import { startGoogleSignIn } from './googleAuth'
 
 type Mode = 'signin' | 'register' | 'forgot'
 
@@ -26,19 +24,6 @@ export function AuthScreen() {
     setError(null)
     setNotice(null)
     setUnconfirmed(false)
-  }
-
-  async function signInWithGoogle() {
-    setBusy(true)
-    setError(null)
-    setNotice(null)
-    setUnconfirmed(false)
-    try {
-      await startGoogleSignIn(window.location.origin, redirect)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not start Google sign-in. Please try again.')
-      setBusy(false)
-    }
   }
 
   async function resendConfirmation() {
@@ -120,14 +105,7 @@ export function AuthScreen() {
         </button>
       </div>
 
-      <p className="text-sm opacity-70">Sign in with your UTA email or Gmail account.</p>
-
-      {mode !== 'forgot' && <>
-        <button type="button" className="btn btn-outline w-full" disabled={busy} onClick={signInWithGoogle}>
-          <IconBrandGoogle size={20} aria-hidden="true" /> Continue with Google
-        </button>
-        <div className="divider my-0 text-xs">or use email and password</div>
-      </>}
+      <p className="text-sm opacity-70">Students use a UTA email. The designated visit approver may use their approved Gmail account.</p>
 
       <form onSubmit={submit} className="flex flex-col gap-3">
         {mode === 'register' && (

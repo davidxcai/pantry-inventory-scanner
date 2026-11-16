@@ -11,14 +11,8 @@ test('allows the designated Gmail reviewer to register without treating them as 
   assert.equal(canRegisterAccount('student@mavs.uta.edu'), true)
   assert.equal(canRegisterAccount('staff@uta.edu'), true)
 })
-test('allows ordinary Gmail sign-in without assigning the approver role', () => {
-  for (const email of ['another@gmail.com', 'salmanfarse2025+tag@gmail.com']) {
-    assert.equal(canRegisterAccount(email), true)
-    assert.equal(isDesignatedVisitApproverEmail(email), false)
-  }
-})
-test('rejects unsupported domains and lookalikes', () => {
-  for (const email of ['salmanfarse2025@gmail.com.evil.test', 'salmanfarse2025@googlemail.com', '']) {
+test('rejects other Gmail addresses, aliases and lookalikes', () => {
+  for (const email of ['another@gmail.com', 'salmanfarse2025+tag@gmail.com', 'salmanfarse2025@gmail.com.evil.test', 'salmanfarse2025@googlemail.com', '']) {
     assert.equal(canRegisterAccount(email), false)
     assert.equal(isDesignatedVisitApproverEmail(email), false)
   }
