@@ -65,9 +65,11 @@ it('shows the active wishlist state on enrolled catalog cards',()=>{
  expect(html).toContain('Remove Rice from wishlist')
  expect(html).not.toContain('>Save</button>')
 })
-it('shows the login email and email preference only inside the Wishlist view',()=>{
+it('shows the presentation email toggle inside the Wishlist view',()=>{
  const html=renderToStaticMarkup(createElement(ProfileScreen,{initialTab:'wishlist'}))
- expect(html).toContain('Alerts go to login@mavs.uta.edu, your login email.')
+ expect(html).toContain('Email me when my wishlist products become available')
+ expect(html).toMatch(/<input[^>]*type="checkbox"/)
+ expect(html).not.toMatch(/<input[^>]*type="checkbox"[^>]*disabled/)
  expect(html).not.toContain('About saved products and email alerts')
  expect(html).not.toContain('type="email"')
 })
@@ -95,7 +97,7 @@ it('keeps setup and sync descriptions hidden without disabling saved-product org
  expect(html).not.toContain('Email alerts need server setup')
  expect(html).not.toContain('We email you when a wishlisted product')
  expect(html).not.toContain('Some wishlist choices are saved on this device')
- expect(html).toMatch(/<input[^>]*type="checkbox"[^>]*disabled/)
+ expect(html).not.toMatch(/<input[^>]*type="checkbox"[^>]*disabled/)
  expect(html).toContain('Browse items')
 })
 
@@ -117,9 +119,9 @@ it('does not promise delivery for a device-only wishlist or paused preference',(
  expect(paused).toContain('Email alerts are paused')
  expect(paused).not.toContain('Email alerts are on')
 })
-it('shows the recipient without the removed help section or descriptions',()=>{
+it('keeps the presentation toggle free of email delivery promises',()=>{
  const html=renderToStaticMarkup(createElement(ProfileScreen,{initialTab:'wishlist'}))
- expect(html).toContain('Alerts go to login@mavs.uta.edu')
+ expect(html).not.toContain('Alerts go to login@mavs.uta.edu')
  expect(html).not.toContain('<details')
  expect(html).not.toContain('out of stock to in stock or low stock')
 })

@@ -7,14 +7,12 @@ import { ItemCard } from '../catalog/ItemCard'
 import { ItemDialog } from '../catalog/ItemDialog'
 import { WatchlistButton } from '../watchlist/WatchlistButton'
 import { useAvailabilityWishlist } from '../watchlist/useAvailabilityWishlist'
-import { useWishlistEmails } from '../watchlist/useWishlistEmails'
 import { useWatchlist } from '../watchlist/useWatchlist'
 
 export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' | 'wishlist' }) {
   const session = useSession()
   const watchlist = useWatchlist(session?.user.id)
   const wishlist = useAvailabilityWishlist(session?.user.id)
-  const emails = useWishlistEmails(session?.user.id)
   const [tab,setTab] = useState<'saved'|'wishlist'>(initialTab)
   const [openId, setOpenId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -57,20 +55,8 @@ export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' |
           </div>
         </div>
         {tab === 'wishlist' && <div className="flex flex-col gap-2">
-          <label className="flex items-center justify-between gap-3 rounded-box bg-base-200 p-3 text-sm">
-            <span>Email me when my wishlist products become available</span>
-            <input type="checkbox" className="toggle toggle-primary" checked={emails.query.data?.enabled ?? false}
-              aria-describedby={emails.query.data?.ready || emails.query.isPending ? 'wishlist-email-info' : undefined} aria-busy={emails.mutation.isPending}
-              disabled={!emails.query.data?.ready || emails.mutation.isPending || emails.query.isError}
-              onChange={event=>emails.mutation.mutate(event.target.checked)}/>
-          </label>
-          {(emails.query.data?.ready || emails.query.isPending) && <div id="wishlist-email-info" className="text-sm" role="status">
-            {emails.query.data?.ready
-              ? <p>{emails.query.data.enabled ? `Alerts go to ${session.user.email}, your login email.` : `Email alerts are paused. Turn the toggle on to receive availability emails at ${session.user.email}.`}</p>
-              : <p>Loading email preferences…</p>}
-          </div>}
-          {(emails.query.error||emails.mutation.error||wishlist.query.error) && <p role="alert" className="text-error text-sm">{(emails.query.error||emails.mutation.error||wishlist.query.error)?.message}</p>}
-          {emails.query.isError && <button type="button" className="btn btn-sm btn-outline self-start" onClick={()=>void emails.query.refetch()}>Retry email preferences</button>}
+          <WishlistEmailToggle key={session.user.id} userId={session.user.id} />
+          {wishlist.query.error && <p role="alert" className="text-error text-sm">{wishlist.query.error.message}</p>}
         </div>}
         {tab === 'wishlist' && wishlist.query.isPending && <p role="status">Loading wishlist…</p>}
 
@@ -141,5 +127,32 @@ export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' |
 
       {openItem && <ItemDialog item={openItem} userId={session.user.id} onClose={() => setOpenId(null)} allowWishlistRemoval={tab==='wishlist'} />}
     </main>
+  )
+}
+
+function WishlistEmailToggle({ userId }: { userId: string }) {
+  const storageKey = `pantry:wishlist-email-preview:${import.meta.env.VITE_SUPABASE_URL ?? 'local'}:${userId}`
+  const [enabled, setEnabled] = useState(() => {
+    try {
+      return localStorage.getItem(storageKey) === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  return (
+    <label className="flex items-center justify-between gap-3 rounded-box bg-base-200 p-3 text-sm">
+      <span>Email me when my wishlist products become available</span>
+      <input type="checkbox" className="toggle toggle-primary" checked={enabled}
+        onChange={event => {
+          const next = event.target.checked
+          setEnabled(next)
+          try {
+            localStorage.setItem(storageKey, String(next))
+          } catch {
+            // Keep the presentation toggle usable when browser storage is unavailable.
+          }
+        }} />
+    </label>
   )
 }
