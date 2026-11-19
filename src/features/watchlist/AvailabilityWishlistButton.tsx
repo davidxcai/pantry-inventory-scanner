@@ -6,17 +6,17 @@ import { useWishlistEmails } from './useWishlistEmails'
 
 function WishlistEmailStatus({ userId, deviceOnly }: { userId: string; deviceOnly: boolean }) {
   const emails = useWishlistEmails(userId)
-  let status = 'Email alerts are not ready yet. Your wishlist choice is saved.'
-  if (deviceOnly) status = 'Your wishlist is saved on this device. Email alerts start after it syncs to your account.'
+  let status = 'Email alerts are not ready yet. Your notify choice is saved.'
+  if (deviceOnly) status = 'Notify is saved on this device. Email alerts start after it syncs to your account.'
   else if (emails.query.isPending) status = 'Checking email alerts…'
-  else if (emails.query.error) status = 'Could not check email alerts. Open your Wishlist to retry.'
+  else if (emails.query.error) status = 'Could not check email alerts. Open your saved products to retry.'
   else if (emails.query.data?.ready) status = emails.query.data.enabled
     ? 'Email alerts are on. We’ll email your login address when this product becomes available.'
-    : 'Email alerts are paused. Turn them on in your Wishlist to receive an availability email.'
+    : 'Email alerts are paused. Turn them on in your saved products to receive an availability email.'
   return (
     <div role="status" className="text-xs">
       <p>{status}</p>
-      <Link to="/profile" search={{ list: 'wishlist' }} className="link text-primary">Manage email alerts</Link>
+      <Link to="/profile" className="link text-primary">Manage email alerts</Link>
     </div>
   )
 }
@@ -33,14 +33,14 @@ export function AvailabilityWishlistButton({ item, userId, allowAvailableRemoval
         type="button"
         className={`btn btn-sm w-full ${added && compact ? 'btn-primary btn-soft' : 'btn-outline'}`}
         aria-pressed={added}
-        aria-label={added ? `Remove ${item.name} from wishlist` : `Add ${item.name} to wishlist for an availability email`}
+        aria-label={added ? `Stop notifying me about ${item.name}` : `Notify me when ${item.name} is back in stock`}
         disabled={query.isPending || !!query.error || mutation.isPending}
         onClick={() => mutation.mutate({ item, enabled: !added })}
       >
         {mutation.isPending
           ? <span className="loading loading-spinner loading-xs" aria-hidden="true" />
           : added ? <IconBellOff size={16} aria-hidden="true" /> : <IconBell size={16} aria-hidden="true" />}
-        {added ? compact ? 'Wishlisted' : 'Remove from wishlist' : 'Add to Wishlist'}
+        {added ? compact ? 'Notifying' : 'Stop notifying' : 'Notify'}
       </button>
       {!compact && (
         <>

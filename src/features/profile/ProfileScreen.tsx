@@ -9,19 +9,16 @@ import { WatchlistButton } from '../watchlist/WatchlistButton'
 import { useAvailabilityWishlist } from '../watchlist/useAvailabilityWishlist'
 import { useWatchlist } from '../watchlist/useWatchlist'
 
-export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' | 'wishlist' }) {
+export function ProfileScreen() {
   const session = useSession()
   const watchlist = useWatchlist(session?.user.id)
   const wishlist = useAvailabilityWishlist(session?.user.id)
-  const [tab,setTab] = useState<'saved'|'wishlist'>(initialTab)
   const [openId, setOpenId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [availability, setAvailability] = useState<SavedAvailability>('all')
   const entries = watchlist.data ?? []
-  const wishlistIds = new Set(wishlist.query.data?.items.map(row=>row.item_id))
-  const tabEntries = tab === 'saved' ? entries : entries.filter(entry=>wishlistIds.has(entry.item_id))
-  const shown = filterSavedProducts(tabEntries, search, availability)
-  const counts = savedProductCounts(tabEntries)
+  const shown = filterSavedProducts(entries, search, availability)
+  const counts = savedProductCounts(entries)
   const openItem = entries.find((entry) => entry.item_id === openId)?.item
 
   if (!session) return <main className="p-4"><span role="status" className="loading loading-spinner" aria-label="Loading profile" /></main>
@@ -36,16 +33,11 @@ export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' |
         </div>
       </header>
 
-      <div className="tabs tabs-box" role="tablist" aria-label="Saved product lists">
-        <button role="tab" aria-selected={tab==='saved'} className={`tab ${tab==='saved'?'tab-active':''}`} onClick={()=>{setTab('saved');setAvailability('all')}}>Saved products ({entries.length})</button>
-        <button role="tab" aria-selected={tab==='wishlist'} className={`tab ${tab==='wishlist'?'tab-active':''}`} onClick={()=>{setTab('wishlist');setAvailability('all')}}>Wishlist ({entries.filter(entry=>wishlistIds.has(entry.item_id)).length})</button>
-      </div>
-
       <section aria-labelledby="watchlist-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="watchlist-heading" className="flex items-center gap-2 text-xl font-semibold">
-            {tab === 'saved' ? 'Your saved products' : 'Your wishlist'}
-            {watchlist.data && <span className="badge badge-neutral">{tabEntries.length}</span>}
+            Your saved products
+            {watchlist.data && <span className="badge badge-neutral">{entries.length}</span>}
           </h2>
           <div className="flex gap-2">
             <button type="button" className="btn btn-ghost btn-sm" disabled={watchlist.isFetching} onClick={() => { void watchlist.refetch(); void wishlist.query.refetch() }} aria-label="Refresh saved products">
@@ -54,11 +46,10 @@ export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' |
             <Link to="/" className="btn btn-outline btn-sm">Browse items</Link>
           </div>
         </div>
-        {tab === 'wishlist' && <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           <WishlistEmailToggle key={session.user.id} userId={session.user.id} />
           {wishlist.query.error && <p role="alert" className="text-error text-sm">{wishlist.query.error.message}</p>}
-        </div>}
-        {tab === 'wishlist' && wishlist.query.isPending && <p role="status">Loading wishlist…</p>}
+        </div>
 
         {watchlist.data && (
           <>
@@ -74,11 +65,11 @@ export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' |
                 </div>
               ))}
             </div>
-            {tabEntries.length > 0 && (
+            {entries.length > 0 && (
               <div className="flex flex-col gap-2 sm:flex-row">
                 <label className="input w-full sm:flex-1">
                   <IconSearch size={18} aria-hidden="true" />
-                  <input type="search" aria-label={tab==='saved'?'Search saved products':'Search wishlist'} placeholder={tab==='saved'?'Search saved products':'Search wishlist'} value={search} onChange={(event) => setSearch(event.target.value)} />
+                  <input type="search" aria-label="Search saved products" placeholder="Search saved products" value={search} onChange={(event) => setSearch(event.target.value)} />
                 </label>
                 <select className="select w-full sm:w-44" aria-label="Saved product availability" value={availability} onChange={(event) => setAvailability(event.target.value as SavedAvailability)}>
                   <option value="all">All availability</option>
@@ -99,13 +90,13 @@ export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' |
             <button type="button" className="btn btn-sm" disabled={watchlist.isFetching} onClick={() => { void watchlist.refetch(); void wishlist.query.refetch() }}>Retry</button>
           </div>
         )}
-        {watchlist.isSuccess && !tabEntries.length && (tab==='saved'||wishlist.query.isSuccess) && (
+        {watchlist.isSuccess && !entries.length && (
           <div className="rounded-box bg-base-200 p-6 text-center">
-            <p className="font-medium">{tab==='saved'?'No saved products yet':'No wishlist products yet'}</p>
+            <p className="font-medium">No saved products yet</p>
             <Link to="/" className="btn btn-primary btn-sm mt-4">Find products</Link>
           </div>
         )}
-        {tabEntries.length > 0 && !shown.length && (
+        {entries.length > 0 && !shown.length && (
           <div className="rounded-box bg-base-200 p-6 text-center">
             <p>No saved products match these filters.</p>
             <button type="button" className="btn btn-ghost btn-sm mt-2" onClick={() => { setSearch(''); setAvailability('all') }}>Clear filters</button>
@@ -125,7 +116,7 @@ export function ProfileScreen({ initialTab = 'saved' }: { initialTab?: 'saved' |
         )}
       </section>
 
-      {openItem && <ItemDialog item={openItem} userId={session.user.id} onClose={() => setOpenId(null)} allowWishlistRemoval={tab==='wishlist'} />}
+      {openItem && <ItemDialog item={openItem} userId={session.user.id} onClose={() => setOpenId(null)} allowWishlistRemoval />}
     </main>
   )
 }
@@ -142,7 +133,7 @@ function WishlistEmailToggle({ userId }: { userId: string }) {
 
   return (
     <label className="flex items-center justify-between gap-3 rounded-box bg-base-200 p-3 text-sm">
-      <span>Email me when my wishlist products become available</span>
+      <span>Email me when products I’m notifying on become available</span>
       <input type="checkbox" className="toggle toggle-primary" checked={enabled}
         onChange={event => {
           const next = event.target.checked
