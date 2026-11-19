@@ -30,19 +30,22 @@ export function CatalogScreen() {
 
   return (
     <main className="pantry-catalog flex w-full min-w-0 flex-col gap-5">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <header className="flex flex-col gap-5 py-6 sm:py-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold">Thyme Saver Maverick Pantry</h1>
-          <p className="mt-1 text-sm">
+          <h1 className="text-3xl font-semibold sm:text-4xl">Thyme Saver Maverick Pantry</h1>
+          <p className="mt-2 text-base sm:text-lg">
             {status.open
               ? <><span className="font-semibold text-success">Open</span> - {status.detail}</>
               : <><span className="font-semibold text-error">Closed</span> - {status.detail}</>}
+          </p>
+          <p className="mt-1 text-base sm:text-lg">
+            520 S Center St, Arlington, TX 76010
             {' | '}
             <a
               href="https://www.google.com/maps/search/?api=1&query=UTA%20Maverick%20Pantry%2C%20520%20S%20Center%20St%2C%20Arlington%2C%20TX%2076010"
               className="link text-blue-600"
             >
-              Map
+              View in maps
             </a>
           </p>
         </div>

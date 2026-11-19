@@ -38,8 +38,8 @@ export function Navbar() {
       <div className="drawer-content">
         <nav aria-label="Main navigation" className="navbar pantry-navbar gap-2 px-4 py-3">
           <Link to="/" className="pantry-brand flex-1">
-            <span className="pantry-brand-name">Maverick Pantry</span>
-            <span className="pantry-brand-university">The University of Texas at Arlington</span>
+            <span className="pantry-brand-name">Thyme Saver</span>
+            <span className="pantry-brand-university">UTA Maverick Pantry</span>
           </Link>
 
           <div className="hidden sm:flex">
@@ -89,8 +89,8 @@ export function Navbar() {
         <div className="flex min-h-full w-4/5 max-w-xs flex-col bg-base-100">
           <div className="pantry-drawer-heading flex items-center justify-between gap-2 px-4 py-3">
             <div className="pantry-brand">
-              <span className="pantry-brand-name">Maverick Pantry</span>
-              <span className="pantry-brand-university">The University of Texas at Arlington</span>
+              <span className="pantry-brand-name">Thyme Saver</span>
+              <span className="pantry-brand-university">UTA Maverick Pantry</span>
             </div>
             <button className="btn btn-ghost btn-square" onClick={close} aria-label="Close menu">
               <IconX size={26} />
